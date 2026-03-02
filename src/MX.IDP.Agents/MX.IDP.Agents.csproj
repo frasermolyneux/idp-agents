@@ -10,8 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.ResourceManager" Version="1.*" />
+    <PackageReference Include="Azure.ResourceManager.ResourceGraph" Version="1.*" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.*" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.*" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Mcp" Version="1.2.0-preview.1" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.*" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.*" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.*" />

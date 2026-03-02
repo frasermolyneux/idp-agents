@@ -3,41 +3,62 @@ using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 using MX.IDP.Agents.Models;
+using MX.IDP.Agents.Tools;
 
 namespace MX.IDP.Agents.Services;
 
 public class ChatCompletionService : IIdpChatService
 {
-    private const string SystemPrompt = """
-        You are an Internal Developer Platform assistant for a cloud engineering team. You help with:
-        - Azure infrastructure questions and resource visibility
-        - Compliance and policy status
-        - GitHub repository and issue management
-        - Cost management insights
-        - General platform knowledge
-
-        Be concise, helpful, and use markdown formatting when appropriate.
-        When you don't know something, say so clearly.
-        """;
-
     private readonly Kernel _kernel;
+    private readonly IAgentRouter _agentRouter;
     private readonly TelemetryClient? _telemetryClient;
     private readonly ILogger<ChatCompletionService> _logger;
+    private bool _pluginsRegistered;
 
-    public ChatCompletionService(Kernel kernel, ILogger<ChatCompletionService> logger, TelemetryClient? telemetryClient = null)
+    public ChatCompletionService(
+        Kernel kernel,
+        IAgentRouter agentRouter,
+        ILogger<ChatCompletionService> logger,
+        SubscriptionTool subscriptionTool,
+        ResourceGraphTool resourceGraphTool,
+        AdvisorTool advisorTool,
+        PolicyTool policyTool,
+        TelemetryClient? telemetryClient = null)
     {
         _kernel = kernel;
+        _agentRouter = agentRouter;
         _logger = logger;
         _telemetryClient = telemetryClient;
+
+        // Register tools as SK plugins (idempotent — only once per kernel)
+        if (!_pluginsRegistered)
+        {
+            _kernel.Plugins.AddFromObject(subscriptionTool, "AzureSubscriptions");
+            _kernel.Plugins.AddFromObject(resourceGraphTool, "AzureResourceGraph");
+            _kernel.Plugins.AddFromObject(advisorTool, "AzureAdvisor");
+            _kernel.Plugins.AddFromObject(policyTool, "AzurePolicy");
+            _pluginsRegistered = true;
+        }
     }
 
     public async Task<ChatResponse> GetCompletionAsync(ChatRequest request)
     {
+        // Route to the appropriate specialist agent
+        var routing = await _agentRouter.RouteAsync(request.Message);
+
+        _telemetryClient?.TrackEvent("AgentRouted", new Dictionary<string, string>
+        {
+            ["Agent"] = routing.AgentName,
+            ["ConversationId"] = request.ConversationId ?? "unknown",
+            ["MessagePreview"] = request.Message.Length > 100 ? request.Message[..100] : request.Message
+        });
+
         var chatCompletion = _kernel.GetRequiredService<IChatCompletionService>();
 
-        var chatHistory = new ChatHistory(SystemPrompt);
+        var chatHistory = new ChatHistory(routing.SystemPrompt);
 
         if (request.History is not null)
         {
@@ -57,10 +78,16 @@ public class ChatCompletionService : IIdpChatService
 
         chatHistory.AddUserMessage(request.Message);
 
+        // Enable auto function calling so the LLM can invoke Azure tools
+        var executionSettings = new OpenAIPromptExecutionSettings
+        {
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+        };
+
         ChatMessageContent result;
         try
         {
-            result = await chatCompletion.GetChatMessageContentAsync(chatHistory);
+            result = await chatCompletion.GetChatMessageContentAsync(chatHistory, executionSettings, _kernel);
         }
         catch (HttpOperationException ex) when (ex.Message.Contains("content_filter") || ex.StatusCode == System.Net.HttpStatusCode.BadRequest)
         {
@@ -73,7 +100,8 @@ public class ChatCompletionService : IIdpChatService
             return new ChatResponse
             {
                 Message = "I'm unable to process that request as it was flagged by the content safety filter. Please rephrase your question.",
-                ConversationId = request.ConversationId ?? Guid.NewGuid().ToString()
+                ConversationId = request.ConversationId ?? Guid.NewGuid().ToString(),
+                Agent = routing.AgentName
             };
         }
 
@@ -90,7 +118,8 @@ public class ChatCompletionService : IIdpChatService
             return new ChatResponse
             {
                 Message = "The response was flagged by the content safety filter. Please try a different question.",
-                ConversationId = request.ConversationId ?? Guid.NewGuid().ToString()
+                ConversationId = request.ConversationId ?? Guid.NewGuid().ToString(),
+                Agent = routing.AgentName
             };
         }
 
@@ -101,6 +130,7 @@ public class ChatCompletionService : IIdpChatService
         {
             Message = result.Content ?? string.Empty,
             ConversationId = request.ConversationId ?? Guid.NewGuid().ToString(),
+            Agent = routing.AgentName,
             Usage = tokenUsage
         };
     }

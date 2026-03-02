@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using System.Text.Json;
 
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -14,11 +16,13 @@ public class ChatFunction
 {
     private readonly IIdpChatService _chatService;
     private readonly ILogger<ChatFunction> _logger;
+    private readonly TelemetryClient? _telemetryClient;
 
-    public ChatFunction(IIdpChatService chatService, ILogger<ChatFunction> logger)
+    public ChatFunction(IIdpChatService chatService, ILogger<ChatFunction> logger, TelemetryClient? telemetryClient = null)
     {
         _chatService = chatService;
         _logger = logger;
+        _telemetryClient = telemetryClient;
     }
 
     [Function("Chat")]
@@ -36,6 +40,18 @@ public class ChatFunction
             {
                 return new BadRequestObjectResult(new { error = "Invalid request body." });
             }
+
+            var userId = req.HttpContext.User?.FindFirst("oid")?.Value ?? "anonymous";
+            var userEmail = req.HttpContext.User?.FindFirst(ClaimTypes.Email)?.Value
+                         ?? req.HttpContext.User?.FindFirst("preferred_username")?.Value;
+
+            _telemetryClient?.TrackEvent("ChatRequest", new Dictionary<string, string>
+            {
+                ["UserId"] = userId,
+                ["UserEmail"] = userEmail ?? "unknown",
+                ["ConversationId"] = request.ConversationId ?? "new",
+                ["MessagePreview"] = request.Message.Length > 100 ? request.Message[..100] : request.Message
+            });
 
             var response = await _chatService.GetCompletionAsync(request);
 

@@ -7,6 +7,7 @@ using Moq;
 
 using MX.IDP.Agents.Models;
 using MX.IDP.Agents.Services;
+using MX.IDP.Agents.Tools;
 
 using Xunit;
 
@@ -15,6 +16,7 @@ namespace MX.IDP.Agents.Tests;
 public class ChatCompletionServiceTests
 {
     private readonly Mock<IChatCompletionService> _mockChatCompletion;
+    private readonly Mock<IAgentRouter> _mockRouter;
     private readonly ChatCompletionService _sut;
 
     public ChatCompletionServiceTests()
@@ -25,7 +27,25 @@ public class ChatCompletionServiceTests
         builder.Services.AddSingleton(_mockChatCompletion.Object);
         var kernel = builder.Build();
 
-        _sut = new ChatCompletionService(kernel, Mock.Of<ILogger<ChatCompletionService>>());
+        _mockRouter = new Mock<IAgentRouter>();
+        _mockRouter.Setup(r => r.RouteAsync(It.IsAny<string>()))
+            .ReturnsAsync(new AgentRouting
+            {
+                AgentName = "OpsBot",
+                SystemPrompt = "You are OpsBot.",
+                ToolPlugins = []
+            });
+
+        var mockArmClient = new Mock<Azure.ResourceManager.ArmClient>(MockBehavior.Loose);
+
+        _sut = new ChatCompletionService(
+            kernel,
+            _mockRouter.Object,
+            Mock.Of<ILogger<ChatCompletionService>>(),
+            new SubscriptionTool(mockArmClient.Object),
+            new ResourceGraphTool(mockArmClient.Object),
+            new AdvisorTool(mockArmClient.Object),
+            new PolicyTool(mockArmClient.Object));
     }
 
     private void SetupChatCompletion(string responseContent)
@@ -144,7 +164,7 @@ public class ChatCompletionServiceTests
 
     [Fact]
     [Trait("Category", "Unit")]
-    public async Task GetCompletionAsync_SetsDefaultAgent()
+    public async Task GetCompletionAsync_SetsAgentFromRouter()
     {
         SetupChatCompletion("response");
 
@@ -152,7 +172,7 @@ public class ChatCompletionServiceTests
 
         var result = await _sut.GetCompletionAsync(request);
 
-        Assert.Equal("TriageAgent", result.Agent);
+        Assert.Equal("OpsBot", result.Agent);
     }
 
     [Fact]
@@ -166,5 +186,33 @@ public class ChatCompletionServiceTests
         var result = await _sut.GetCompletionAsync(request);
 
         Assert.NotNull(result);
+    }
+
+    [Fact]
+    [Trait("Category", "Unit")]
+    public async Task GetCompletionAsync_CallsAgentRouter_WithUserMessage()
+    {
+        SetupChatCompletion("response");
+
+        var request = new ChatRequest { Message = "Show me advisor recommendations" };
+
+        await _sut.GetCompletionAsync(request);
+
+        _mockRouter.Verify(r => r.RouteAsync("Show me advisor recommendations"), Times.Once);
+    }
+
+    [Fact]
+    [Trait("Category", "Unit")]
+    public async Task GetCompletionAsync_UsesRouterSystemPrompt()
+    {
+        ChatHistory? capturedHistory = null;
+        SetupChatCompletionWithCapture("response", h => capturedHistory = h);
+
+        var request = new ChatRequest { Message = "Hello" };
+
+        await _sut.GetCompletionAsync(request);
+
+        Assert.NotNull(capturedHistory);
+        Assert.Equal("You are OpsBot.", capturedHistory![0].Content);
     }
 }

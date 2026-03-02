@@ -1,4 +1,5 @@
 using Azure.Identity;
+using Azure.ResourceManager;
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
@@ -8,6 +9,7 @@ using Microsoft.Identity.Web;
 using Microsoft.SemanticKernel;
 
 using MX.IDP.Agents.Services;
+using MX.IDP.Agents.Tools;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -27,14 +29,25 @@ var chatDeployment = builder.Configuration["AzureOpenAI:ChatDeployment"]
                      ?? builder.Configuration["AzureOpenAI__ChatDeployment"]
                      ?? "gpt-4.1-mini";
 
-// Register Semantic Kernel
+// Azure Resource Manager client for tools
+var credential = new DefaultAzureCredential();
+builder.Services.AddSingleton(new ArmClient(credential));
+
+// Register Semantic Kernel with Azure tools as plugins
 builder.Services.AddKernel();
 builder.Services.AddAzureOpenAIChatCompletion(
     deploymentName: chatDeployment,
     endpoint: azureOpenAIEndpoint,
-    credentials: new DefaultAzureCredential());
+    credentials: credential);
 
-// Register IDP chat service
+// Register tool classes for DI
+builder.Services.AddSingleton<SubscriptionTool>();
+builder.Services.AddSingleton<ResourceGraphTool>();
+builder.Services.AddSingleton<AdvisorTool>();
+builder.Services.AddSingleton<PolicyTool>();
+
+// Register agent router and IDP chat service
+builder.Services.AddScoped<IAgentRouter, AgentRouter>();
 builder.Services.AddScoped<IIdpChatService, ChatCompletionService>();
 
 // JWT Bearer auth with Microsoft Identity Web

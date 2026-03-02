@@ -8,5 +8,12 @@
       },
       "enableLiveMetricsFilters": true
     }
+  },
+  "extensions": {
+    "mcp": {
+      "instructions": "Internal Developer Platform tools for querying Azure infrastructure, compliance, and advisor recommendations across all subscriptions.",
+      "serverName": "idp-agents",
+      "serverVersion": "1.0.0"
+    }
   }
 }
