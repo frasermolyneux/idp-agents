@@ -26,7 +26,7 @@ public class AgentRouter : IAgentRouter
         Categories:
         - OpsBot: Azure infrastructure, resources, subscriptions, advisor recommendations, resource health, deployments, cost
         - ComplianceBot: Azure Policy compliance, non-compliant resources, policy violations, security posture
-        - GitHubBot: GitHub issues, pull requests, Actions workflows, repository management, creating issues, assigning work
+        - GitHubBot: GitHub issues, pull requests, Actions workflows, repository management, listing repositories, creating issues, assigning work
         - GeneralBot: General questions, greetings, help requests, anything not clearly matching another category
 
         User message:
@@ -66,6 +66,7 @@ public class AgentRouter : IAgentRouter
                 - query_resources: Run Azure Resource Graph queries for compliance-related resource analysis
                 - create_issue: Create GitHub issues for remediation tracking
                 - list_issues: Check existing issues to avoid duplicates
+                - list_repositories: List repositories to find correct repo names
 
                 Use these tools when the user asks about compliance, policy violations, or security posture.
                 Prioritize high-impact non-compliant resources. Suggest remediation steps when possible.
@@ -82,6 +83,7 @@ public class AgentRouter : IAgentRouter
                 for the frasermolyneux account.
 
                 You have access to GitHub tools:
+                - list_repositories: List all repositories owned by frasermolyneux
                 - create_issue: Create issues in any frasermolyneux repository
                 - list_issues: List and filter issues by state and labels
                 - get_actions_status: Check recent Actions workflow run status

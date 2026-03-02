@@ -143,6 +143,7 @@ public class ToolRegistrationTests
     [Trait("Category", "Unit")]
     [InlineData("CreateIssueAsync", "create_issue")]
     [InlineData("ListIssuesAsync", "list_issues")]
+    [InlineData("ListRepositoriesAsync", "list_repositories")]
     [InlineData("GetActionsStatusAsync", "get_actions_status")]
     [InlineData("AssignIssueAsync", "assign_issue")]
     public void GitHubTool_HasKernelFunctions(string methodName, string functionName)

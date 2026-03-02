@@ -144,20 +144,25 @@ public class ChatCompletionService : IIdpChatService
         };
     }
 
-    private static List<TokenLogprobInfo>? ExtractLogprobs(ChatMessageContent result)
+    private List<TokenLogprobInfo>? ExtractLogprobs(ChatMessageContent result)
     {
         if (result.Metadata is null) return null;
 
-        // SK surfaces logprobs in Metadata["ContentTokenLogProbabilityResults"] or similar
-        if (result.Metadata.TryGetValue("ContentTokenLogProbabilityResults", out var logprobsObj) && logprobsObj is not null)
-        {
-            return ExtractLogprobsFromObject(logprobsObj);
-        }
+        // Log available metadata keys for debugging
+        _logger.LogDebug("Metadata keys available: {Keys}", string.Join(", ", result.Metadata.Keys));
 
-        // Also try "Logprobs" key
-        if (result.Metadata.TryGetValue("Logprobs", out var logprobs2) && logprobs2 is not null)
+        // SK 1.71+ with OpenAI SDK v2 uses "ContentTokenLogProbabilities"
+        string[] possibleKeys = ["ContentTokenLogProbabilities", "ContentTokenLogProbabilityResults", "Logprobs", "LogProbabilityInfo"];
+
+        foreach (var key in possibleKeys)
         {
-            return ExtractLogprobsFromObject(logprobs2);
+            if (result.Metadata.TryGetValue(key, out var logprobsObj) && logprobsObj is not null)
+            {
+                _logger.LogDebug("Found logprobs under key '{Key}', type: {Type}", key, logprobsObj.GetType().FullName);
+                var extracted = ExtractLogprobsFromObject(logprobsObj);
+                if (extracted is not null)
+                    return extracted;
+            }
         }
 
         return null;

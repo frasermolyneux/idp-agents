@@ -22,6 +22,49 @@ public class GitHubTool
         _telemetryClient = telemetryClient;
     }
 
+    [KernelFunction("list_repositories")]
+    [Description("Lists repositories accessible to the IDP GitHub App installation under frasermolyneux. Returns name, description, language, and visibility.")]
+    public async Task<string> ListRepositoriesAsync(
+        [Description("Optional: filter by visibility — public, private, all. Default: all")] string? visibility = "all",
+        [Description("Optional: maximum number of results. Default 50")] int maxResults = 50)
+    {
+        _telemetryClient?.TrackEvent("ToolInvocation", new Dictionary<string, string>
+        {
+            ["Tool"] = "list_repositories",
+            ["Visibility"] = visibility ?? "all"
+        });
+
+        var client = await _clientFactory.CreateClientAsync();
+
+        // Use installation endpoint — GitHub App tokens can only list repos the installation has access to
+        var installationRepos = await client.GitHubApps.Installation.GetAllRepositoriesForCurrent();
+
+        var repos = installationRepos.Repositories.AsEnumerable();
+
+        var filtered = visibility?.ToLowerInvariant() switch
+        {
+            "public" => repos.Where(r => !r.Private),
+            "private" => repos.Where(r => r.Private),
+            _ => repos
+        };
+
+        var results = filtered.Take(maxResults).Select(r => new
+        {
+            name = r.Name,
+            description = r.Description ?? "",
+            language = r.Language ?? "—",
+            visibility = r.Private ? "private" : "public",
+            url = r.HtmlUrl,
+            updatedAt = r.UpdatedAt.ToString("yyyy-MM-dd")
+        }).OrderBy(r => r.name);
+
+        return JsonSerializer.Serialize(new
+        {
+            count = results.Count(),
+            repositories = results
+        }, new JsonSerializerOptions { WriteIndented = true });
+    }
+
     [KernelFunction("create_issue")]
     [Description("Creates a GitHub issue in a repository owned by frasermolyneux. Can assign to users or the Copilot coding agent.")]
     public async Task<string> CreateIssueAsync(
