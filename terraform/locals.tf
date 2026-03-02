@@ -1,5 +1,6 @@
 locals {
-  resource_group_name = data.terraform_remote_state.idp_core.outputs.resource_group_name
+  workload_resource_group = data.terraform_remote_state.platform_workloads.outputs.workload_resource_groups[var.workload_name][var.environment].resource_groups[lower(var.location)]
+  resource_group_name     = local.workload_resource_group.name
 
   app_service_plan = data.terraform_remote_state.platform_hosting.outputs.app_service_plans["default"]
 
