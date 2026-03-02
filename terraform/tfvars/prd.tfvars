@@ -10,3 +10,10 @@ idp_core_state = {
   container_name       = "tfstate"
   key                  = "terraform.tfstate"
 }
+
+platform_hosting_state = {
+  resource_group_name  = "rg-tf-platform-hosting-prd-uksouth-01"
+  storage_account_name = "sab227d365059d"
+  container_name       = "tfstate"
+  key                  = "terraform.tfstate"
+}

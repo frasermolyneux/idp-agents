@@ -16,6 +16,9 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.*" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.*" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.*" />
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.71.*" />
+    <PackageReference Include="Azure.Identity" Version="1.*" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="3.10.*" />
   </ItemGroup>
 
   <ItemGroup>

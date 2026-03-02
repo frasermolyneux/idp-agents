@@ -27,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-dev
+    outputs:
+      function_app_name: ${{ steps.terraform-output.outputs.function_app_name }}
+      function_app_resource_group: ${{ steps.terraform-output.outputs.function_app_resource_group }}
     steps:
       - uses: frasermolyneux/actions/terraform-plan-and-apply@terraform-plan-and-apply/v1.4
         with:
@@ -37,4 +40,35 @@ jobs:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-  # TODO: Add terraform-output step and function-app-deploy-dev job once Terraform resources are defined
+      - id: terraform-output
+        shell: bash
+        run: |
+          cd terraform
+          echo "function_app_name=$(terraform output -raw function_app_name)" >> $GITHUB_OUTPUT
+          echo "function_app_resource_group=$(terraform output -raw function_app_resource_group)" >> $GITHUB_OUTPUT
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_USE_AZUREAD: true
+          ARM_USE_OIDC: true
+
+  function-app-deploy-dev:
+    permissions:
+      contents: read
+      id-token: write
+    environment: Development
+    needs: [build-and-test, terraform-plan-and-apply-dev]
+    if: "!failure() && !cancelled()"
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.repository }}-dev
+    steps:
+      - uses: frasermolyneux/actions/deploy-function-app@deploy-function-app/v1.2
+        with:
+          function-app-artifact-name: "MX.IDP.Agents"
+          function-app-name: ${{ needs.terraform-plan-and-apply-dev.outputs.function_app_name }}
+          function-app-resource-group: ${{ needs.terraform-plan-and-apply-dev.outputs.function_app_resource_group }}
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
