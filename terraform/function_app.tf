@@ -42,6 +42,10 @@ resource "azurerm_linux_function_app" "function_app" {
     active_directory_v2 {
       client_id            = local.idp_agents_app_client_id
       tenant_auth_endpoint = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
+      allowed_audiences = [
+        format("api://%s/idp-agents-%s", data.azurerm_client_config.current.tenant_id, var.environment),
+        local.idp_agents_app_client_id
+      ]
     }
 
     login {}
