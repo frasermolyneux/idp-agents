@@ -26,6 +26,7 @@ public class ChatCompletionService : IIdpChatService
         ResourceGraphTool resourceGraphTool,
         AdvisorTool advisorTool,
         PolicyTool policyTool,
+        GitHubTool gitHubTool,
         TelemetryClient? telemetryClient = null)
     {
         _kernel = kernel;
@@ -40,6 +41,7 @@ public class ChatCompletionService : IIdpChatService
             _kernel.Plugins.AddFromObject(resourceGraphTool, "AzureResourceGraph");
             _kernel.Plugins.AddFromObject(advisorTool, "AzureAdvisor");
             _kernel.Plugins.AddFromObject(policyTool, "AzurePolicy");
+            _kernel.Plugins.AddFromObject(gitHubTool, "GitHub");
             _pluginsRegistered = true;
         }
     }
@@ -81,7 +83,9 @@ public class ChatCompletionService : IIdpChatService
         // Enable auto function calling so the LLM can invoke Azure tools
         var executionSettings = new OpenAIPromptExecutionSettings
         {
-            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
+            Logprobs = true,
+            TopLogprobs = 5
         };
 
         ChatMessageContent result;
@@ -126,13 +130,129 @@ public class ChatCompletionService : IIdpChatService
         var tokenUsage = ExtractTokenUsage(result);
         TrackTokenUsage(tokenUsage, request.ConversationId);
 
+        var logprobs = ExtractLogprobs(result);
+        var functionCalls = ExtractFunctionCallTrace(chatHistory);
+
         return new ChatResponse
         {
             Message = result.Content ?? string.Empty,
             ConversationId = request.ConversationId ?? Guid.NewGuid().ToString(),
             Agent = routing.AgentName,
-            Usage = tokenUsage
+            Usage = tokenUsage,
+            Logprobs = logprobs,
+            FunctionCalls = functionCalls
         };
+    }
+
+    private static List<TokenLogprobInfo>? ExtractLogprobs(ChatMessageContent result)
+    {
+        if (result.Metadata is null) return null;
+
+        // SK surfaces logprobs in Metadata["ContentTokenLogProbabilityResults"] or similar
+        if (result.Metadata.TryGetValue("ContentTokenLogProbabilityResults", out var logprobsObj) && logprobsObj is not null)
+        {
+            return ExtractLogprobsFromObject(logprobsObj);
+        }
+
+        // Also try "Logprobs" key
+        if (result.Metadata.TryGetValue("Logprobs", out var logprobs2) && logprobs2 is not null)
+        {
+            return ExtractLogprobsFromObject(logprobs2);
+        }
+
+        return null;
+    }
+
+    private static List<TokenLogprobInfo>? ExtractLogprobsFromObject(object logprobsObj)
+    {
+        var result = new List<TokenLogprobInfo>();
+
+        // Use reflection to handle different SDK versions
+        if (logprobsObj is System.Collections.IEnumerable enumerable)
+        {
+            foreach (var item in enumerable)
+            {
+                var type = item.GetType();
+                var token = type.GetProperty("Token")?.GetValue(item)?.ToString();
+                var logprob = type.GetProperty("LogProbability")?.GetValue(item);
+
+                if (token is null) continue;
+
+                var info = new TokenLogprobInfo
+                {
+                    Token = token,
+                    Logprob = logprob is not null ? Convert.ToDouble(logprob) : 0
+                };
+
+                // Extract top logprobs (alternatives)
+                var topLogprobs = type.GetProperty("TopLogProbabilities")?.GetValue(item);
+                if (topLogprobs is System.Collections.IEnumerable topEnum)
+                {
+                    foreach (var alt in topEnum)
+                    {
+                        var altType = alt.GetType();
+                        var altToken = altType.GetProperty("Token")?.GetValue(alt)?.ToString();
+                        var altLogprob = altType.GetProperty("LogProbability")?.GetValue(alt);
+
+                        if (altToken is not null)
+                        {
+                            info.TopAlternatives.Add(new TokenAlternative
+                            {
+                                Token = altToken,
+                                Logprob = altLogprob is not null ? Convert.ToDouble(altLogprob) : 0
+                            });
+                        }
+                    }
+                }
+
+                result.Add(info);
+            }
+        }
+
+        return result.Count > 0 ? result : null;
+    }
+
+    private static List<FunctionCallInfo>? ExtractFunctionCallTrace(ChatHistory chatHistory)
+    {
+        var calls = new List<FunctionCallInfo>();
+        var order = 0;
+
+        foreach (var msg in chatHistory)
+        {
+            if (msg.Role == AuthorRole.Assistant && msg.Items is not null)
+            {
+                foreach (var item in msg.Items)
+                {
+                    if (item is Microsoft.SemanticKernel.FunctionCallContent fcc)
+                    {
+                        calls.Add(new FunctionCallInfo
+                        {
+                            ToolName = $"{fcc.PluginName}.{fcc.FunctionName}",
+                            Arguments = fcc.Arguments?.ToDictionary(kv => kv.Key, kv => kv.Value?.ToString() ?? ""),
+                            Order = order++
+                        });
+                    }
+                }
+            }
+
+            if (msg.Role == AuthorRole.Tool && msg.Items is not null)
+            {
+                foreach (var item in msg.Items)
+                {
+                    if (item is Microsoft.SemanticKernel.FunctionResultContent frc && calls.Count > 0)
+                    {
+                        var lastCall = calls.LastOrDefault(c => c.ResultPreview is null);
+                        if (lastCall is not null)
+                        {
+                            var resultStr = frc.Result?.ToString() ?? "";
+                            lastCall.ResultPreview = resultStr.Length > 200 ? resultStr[..200] + "..." : resultStr;
+                        }
+                    }
+                }
+            }
+        }
+
+        return calls.Count > 0 ? calls : null;
     }
 
     private static TokenUsage? ExtractTokenUsage(ChatMessageContent result)

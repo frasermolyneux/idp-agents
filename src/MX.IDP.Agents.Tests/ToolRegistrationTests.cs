@@ -127,14 +127,32 @@ public class ToolRegistrationTests
         var resourceGraphTool = new ResourceGraphTool(armClient);
         var advisorTool = new AdvisorTool(armClient);
         var policyTool = new PolicyTool(armClient);
+        var gitHubTool = new GitHubTool(Moq.Mock.Of<MX.IDP.Agents.Services.IGitHubClientFactory>());
 
         // These should not throw — verifies SK function metadata is valid
         kernel.Plugins.AddFromObject(subscriptionTool, "AzureSubscriptions");
         kernel.Plugins.AddFromObject(resourceGraphTool, "AzureResourceGraph");
         kernel.Plugins.AddFromObject(advisorTool, "AzureAdvisor");
         kernel.Plugins.AddFromObject(policyTool, "AzurePolicy");
+        kernel.Plugins.AddFromObject(gitHubTool, "GitHub");
 
-        Assert.Equal(4, kernel.Plugins.Count);
+        Assert.Equal(5, kernel.Plugins.Count);
+    }
+
+    [Theory]
+    [Trait("Category", "Unit")]
+    [InlineData("CreateIssueAsync", "create_issue")]
+    [InlineData("ListIssuesAsync", "list_issues")]
+    [InlineData("GetActionsStatusAsync", "get_actions_status")]
+    [InlineData("AssignIssueAsync", "assign_issue")]
+    public void GitHubTool_HasKernelFunctions(string methodName, string functionName)
+    {
+        var method = typeof(GitHubTool).GetMethod(methodName);
+        Assert.NotNull(method);
+
+        var attr = method!.GetCustomAttribute<KernelFunctionAttribute>();
+        Assert.NotNull(attr);
+        Assert.Equal(functionName, attr!.Name);
     }
 
     [Fact]

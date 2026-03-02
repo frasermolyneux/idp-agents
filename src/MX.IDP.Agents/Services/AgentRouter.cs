@@ -26,7 +26,8 @@ public class AgentRouter : IAgentRouter
         Categories:
         - OpsBot: Azure infrastructure, resources, subscriptions, advisor recommendations, resource health, deployments, cost
         - ComplianceBot: Azure Policy compliance, non-compliant resources, policy violations, security posture
-        - GeneralBot: General questions, greetings, help requests, anything not clearly Azure ops or compliance
+        - GitHubBot: GitHub issues, pull requests, Actions workflows, repository management, creating issues, assigning work
+        - GeneralBot: General questions, greetings, help requests, anything not clearly matching another category
 
         User message:
         """;
@@ -63,11 +64,34 @@ public class AgentRouter : IAgentRouter
                 - get_policy_compliance: Get compliance summary across subscriptions
                 - get_non_compliant_resources: List specific non-compliant resources with policy details
                 - query_resources: Run Azure Resource Graph queries for compliance-related resource analysis
+                - create_issue: Create GitHub issues for remediation tracking
+                - list_issues: Check existing issues to avoid duplicates
 
                 Use these tools when the user asks about compliance, policy violations, or security posture.
                 Prioritize high-impact non-compliant resources. Suggest remediation steps when possible.
+                When the user wants to create issues for non-compliant resources, confirm before creating them.
                 """,
-            ToolPlugins = ["AzurePolicy", "AzureResourceGraph"]
+            ToolPlugins = ["AzurePolicy", "AzureResourceGraph", "GitHub"]
+        },
+        ["GitHubBot"] = new AgentRouting
+        {
+            AgentName = "GitHubBot",
+            SystemPrompt = """
+                You are GitHubBot, the GitHub specialist for an Internal Developer Platform.
+                You help with GitHub issue management, Actions workflow status, and repository operations
+                for the frasermolyneux account.
+
+                You have access to GitHub tools:
+                - create_issue: Create issues in any frasermolyneux repository
+                - list_issues: List and filter issues by state and labels
+                - get_actions_status: Check recent Actions workflow run status
+                - assign_issue: Assign issues to users or the Copilot coding agent
+
+                When creating issues, write clear titles and detailed markdown bodies.
+                When assigning to Copilot, use 'copilot' as the assignee.
+                Always confirm before creating or modifying multiple issues.
+                """,
+            ToolPlugins = ["GitHub"]
         },
         ["GeneralBot"] = new AgentRouting
         {
@@ -76,12 +100,12 @@ public class AgentRouter : IAgentRouter
                 You are an Internal Developer Platform assistant for a cloud engineering team.
                 You help with general questions about the platform, development workflows, and best practices.
 
-                You have access to Azure tools that let you query live infrastructure data.
-                Use them if the user's question relates to Azure resources, compliance, or recommendations.
+                You have access to Azure and GitHub tools that let you query live data.
+                Use them if the user's question relates to Azure resources, compliance, recommendations, or GitHub.
                 Be concise, helpful, and use markdown formatting when appropriate.
                 When you don't know something, say so clearly.
                 """,
-            ToolPlugins = ["AzureSubscriptions", "AzureResourceGraph", "AzureAdvisor", "AzurePolicy"]
+            ToolPlugins = ["AzureSubscriptions", "AzureResourceGraph", "AzureAdvisor", "AzurePolicy", "GitHub"]
         }
     };
 

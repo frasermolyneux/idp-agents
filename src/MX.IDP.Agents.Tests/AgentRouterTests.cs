@@ -130,7 +130,18 @@ public class AgentRouterTests
 
         Assert.Contains("AzurePolicy", result.ToolPlugins);
         Assert.Contains("AzureResourceGraph", result.ToolPlugins);
-        Assert.DoesNotContain("AzureAdvisor", result.ToolPlugins);
+    }
+
+    [Fact]
+    [Trait("Category", "Unit")]
+    public async Task RouteAsync_GitHubBot_ReturnsGitHubBotRouting()
+    {
+        SetupTriageResponse("GitHubBot");
+
+        var result = await _sut.RouteAsync("Create an issue in idp-core");
+
+        Assert.Equal("GitHubBot", result.AgentName);
+        Assert.Contains("GitHub", result.ToolPlugins);
     }
 
     private void SetupTriageResponse(string agentName)

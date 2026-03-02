@@ -45,6 +45,8 @@ builder.Services.AddSingleton<SubscriptionTool>();
 builder.Services.AddSingleton<ResourceGraphTool>();
 builder.Services.AddSingleton<AdvisorTool>();
 builder.Services.AddSingleton<PolicyTool>();
+builder.Services.AddSingleton<IGitHubClientFactory, GitHubClientFactory>();
+builder.Services.AddSingleton<GitHubTool>();
 
 // Register agent router and IDP chat service
 builder.Services.AddScoped<IAgentRouter, AgentRouter>();

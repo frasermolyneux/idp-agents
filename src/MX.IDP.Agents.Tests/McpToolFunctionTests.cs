@@ -18,6 +18,10 @@ public class McpToolFunctionTests
     [InlineData("mcp_get_advisor_recommendations", "GetAdvisorRecommendations")]
     [InlineData("mcp_get_policy_compliance", "GetPolicyCompliance")]
     [InlineData("mcp_get_non_compliant_resources", "GetNonCompliantResources")]
+    [InlineData("mcp_create_issue", "CreateIssue")]
+    [InlineData("mcp_list_issues", "ListIssues")]
+    [InlineData("mcp_get_actions_status", "GetActionsStatus")]
+    [InlineData("mcp_assign_issue", "AssignIssue")]
     public void McpToolFunction_HasFunctionAttribute(string functionName, string methodName)
     {
         var method = typeof(McpToolFunctions).GetMethod(methodName);
@@ -35,6 +39,10 @@ public class McpToolFunctionTests
     [InlineData("GetAdvisorRecommendations", "get_advisor_recommendations")]
     [InlineData("GetPolicyCompliance", "get_policy_compliance")]
     [InlineData("GetNonCompliantResources", "get_non_compliant_resources")]
+    [InlineData("CreateIssue", "create_issue")]
+    [InlineData("ListIssues", "list_issues")]
+    [InlineData("GetActionsStatus", "get_actions_status")]
+    [InlineData("AssignIssue", "assign_issue")]
     public void McpToolFunction_HasMcpToolTrigger(string methodName, string toolName)
     {
         var method = typeof(McpToolFunctions).GetMethod(methodName);
@@ -51,14 +59,14 @@ public class McpToolFunctionTests
 
     [Fact]
     [Trait("Category", "Unit")]
-    public void McpToolFunctions_ExposesFiveTools()
+    public void McpToolFunctions_ExposesNineTools()
     {
         var methods = typeof(McpToolFunctions)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(m => m.GetCustomAttribute<FunctionAttribute>() is not null)
             .ToList();
 
-        Assert.Equal(5, methods.Count);
+        Assert.Equal(9, methods.Count);
     }
 
     [Fact]
