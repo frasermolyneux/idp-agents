@@ -49,6 +49,10 @@ resource "azurerm_linux_function_app" "function_app" {
 
   app_settings = {
     "AZURE_CLIENT_ID"             = local.agents_identity_client_id
+    "AzureAd__Instance"           = "https://login.microsoftonline.com/"
+    "AzureAd__TenantId"           = data.azurerm_client_config.current.tenant_id
+    "AzureAd__ClientId"           = local.idp_agents_app_client_id
+    "AzureAd__Audience"           = format("api://%s/idp-agents-%s", data.azurerm_client_config.current.tenant_id, var.environment)
     "AzureOpenAI__Endpoint"       = local.openai_endpoint
     "AzureOpenAI__ChatDeployment" = "gpt-4.1-mini"
     "KeyVault__Uri"               = local.key_vault_uri
