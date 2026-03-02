@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 
@@ -24,7 +25,7 @@ public class ChatCompletionServiceTests
         builder.Services.AddSingleton(_mockChatCompletion.Object);
         var kernel = builder.Build();
 
-        _sut = new ChatCompletionService(kernel);
+        _sut = new ChatCompletionService(kernel, Mock.Of<ILogger<ChatCompletionService>>());
     }
 
     private void SetupChatCompletion(string responseContent)
