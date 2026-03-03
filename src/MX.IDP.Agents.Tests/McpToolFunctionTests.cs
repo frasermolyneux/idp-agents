@@ -25,6 +25,12 @@ public class McpToolFunctionTests
     [InlineData("mcp_search_knowledge", "SearchKnowledge")]
     [InlineData("mcp_list_knowledge_sources", "ListKnowledgeSources")]
     [InlineData("mcp_trigger_reindex", "TriggerKnowledgeReindex")]
+    [InlineData("mcp_create_campaign", "CreateCampaign")]
+    [InlineData("mcp_list_campaigns", "ListCampaigns")]
+    [InlineData("mcp_run_campaign", "RunCampaign")]
+    [InlineData("mcp_get_campaign_findings", "GetCampaignFindings")]
+    [InlineData("mcp_list_campaign_templates", "ListCampaignTemplates")]
+    [InlineData("mcp_create_campaign_from_template", "CreateCampaignFromTemplate")]
     public void McpToolFunction_HasFunctionAttribute(string functionName, string methodName)
     {
         var method = typeof(McpToolFunctions).GetMethod(methodName);
@@ -49,6 +55,12 @@ public class McpToolFunctionTests
     [InlineData("SearchKnowledge", "search_knowledge_base")]
     [InlineData("ListKnowledgeSources", "list_knowledge_sources")]
     [InlineData("TriggerKnowledgeReindex", "trigger_reindex")]
+    [InlineData("CreateCampaign", "create_campaign")]
+    [InlineData("ListCampaigns", "list_campaigns")]
+    [InlineData("RunCampaign", "run_campaign")]
+    [InlineData("GetCampaignFindings", "get_campaign_findings")]
+    [InlineData("ListCampaignTemplates", "list_campaign_templates")]
+    [InlineData("CreateCampaignFromTemplate", "create_campaign_from_template")]
     public void McpToolFunction_HasMcpToolTrigger(string methodName, string toolName)
     {
         var method = typeof(McpToolFunctions).GetMethod(methodName);
@@ -65,14 +77,14 @@ public class McpToolFunctionTests
 
     [Fact]
     [Trait("Category", "Unit")]
-    public void McpToolFunctions_ExposesNineTools()
+    public void McpToolFunctions_ExposesAllTools()
     {
         var methods = typeof(McpToolFunctions)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(m => m.GetCustomAttribute<FunctionAttribute>() is not null)
             .ToList();
 
-        Assert.Equal(12, methods.Count);
+        Assert.Equal(18, methods.Count);
     }
 
     [Fact]

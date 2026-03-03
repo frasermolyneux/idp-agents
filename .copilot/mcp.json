@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "idp": {
+      "type": "http",
+      "url": "https://fn-idp-agents-prd-swedencentral.azurewebsites.net/runtime/webhooks/mcp/sse"
+    }
+  }
+}

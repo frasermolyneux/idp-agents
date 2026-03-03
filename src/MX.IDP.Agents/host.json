@@ -11,9 +11,9 @@
   },
   "extensions": {
     "mcp": {
-      "instructions": "Internal Developer Platform tools for querying Azure infrastructure, compliance, and advisor recommendations across all subscriptions.",
+      "instructions": "Internal Developer Platform MCP server. Tools: Azure subscriptions, Resource Graph queries, Advisor recommendations, Policy compliance, GitHub issues/actions, knowledge base search, and campaign management (create, run, track findings, templates). Use campaigns to systematically remediate issues across repos and infrastructure.",
       "serverName": "idp-agents",
-      "serverVersion": "1.0.0"
+      "serverVersion": "2.0.0"
     }
   }
 }

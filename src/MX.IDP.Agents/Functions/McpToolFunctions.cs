@@ -14,6 +14,7 @@ public class McpToolFunctions
     private readonly PolicyTool _policyTool;
     private readonly GitHubTool _gitHubTool;
     private readonly KnowledgeTool _knowledgeTool;
+    private readonly CampaignTool _campaignTool;
     private readonly ILogger<McpToolFunctions> _logger;
 
     public McpToolFunctions(
@@ -23,6 +24,7 @@ public class McpToolFunctions
         PolicyTool policyTool,
         GitHubTool gitHubTool,
         KnowledgeTool knowledgeTool,
+        CampaignTool campaignTool,
         ILogger<McpToolFunctions> logger)
     {
         _subscriptionTool = subscriptionTool;
@@ -31,6 +33,7 @@ public class McpToolFunctions
         _policyTool = policyTool;
         _gitHubTool = gitHubTool;
         _knowledgeTool = knowledgeTool;
+        _campaignTool = campaignTool;
         _logger = logger;
     }
 
@@ -160,5 +163,70 @@ public class McpToolFunctions
     {
         _logger.LogInformation("MCP tool invoked: trigger_reindex");
         return await _knowledgeTool.TriggerReindexAsync(sourceType, sourceName);
+    }
+
+    // Campaign tools
+
+    [Function("mcp_create_campaign")]
+    public async Task<string> CreateCampaign(
+        [McpToolTrigger("create_campaign", "Create a new campaign to systematically scan and remediate issues across repositories and infrastructure")] ToolInvocationContext context,
+        [McpToolProperty("name", "Campaign name", isRequired: true)] string name,
+        [McpToolProperty("sourceType", "Source type: advisor, policy, dev_standards, repo_config, dependabot, codeql, or kql", isRequired: true)] string sourceType,
+        [McpToolProperty("description", "Campaign description")] string? description,
+        [McpToolProperty("category", "For advisor: filter by category (Cost, Security, Reliability, Performance)")] string? category,
+        [McpToolProperty("impact", "For advisor/dependabot/codeql: filter by impact (High, Medium, Low)")] string? impact,
+        [McpToolProperty("repos", "Comma-separated repo names to scope the campaign to")] string? repos,
+        [McpToolProperty("assignTo", "Assignee for created issues (use 'copilot' for Copilot coding agent)")] string? assignTo,
+        [McpToolProperty("kqlQuery", "For kql source type: the ARG KQL query to execute")] string? kqlQuery)
+    {
+        _logger.LogInformation("MCP tool invoked: create_campaign");
+        return await _campaignTool.CreateCampaignAsync(name, sourceType, description, category, impact, repos, assignTo, kqlQuery);
+    }
+
+    [Function("mcp_list_campaigns")]
+    public async Task<string> ListCampaigns(
+        [McpToolTrigger("list_campaigns", "List all campaigns, optionally filtered by status")] ToolInvocationContext context,
+        [McpToolProperty("status", "Filter by status: created, running, paused, completed, failed")] string? status)
+    {
+        _logger.LogInformation("MCP tool invoked: list_campaigns");
+        return await _campaignTool.ListCampaignsAsync(status);
+    }
+
+    [Function("mcp_run_campaign")]
+    public async Task<string> RunCampaign(
+        [McpToolTrigger("run_campaign", "Run a campaign by ID — scans data source, deduplicates findings, creates GitHub issues, and tracks progress")] ToolInvocationContext context,
+        [McpToolProperty("campaignId", "Campaign ID to run", isRequired: true)] string campaignId)
+    {
+        _logger.LogInformation("MCP tool invoked: run_campaign");
+        return await _campaignTool.RunCampaignAsync(campaignId);
+    }
+
+    [Function("mcp_get_campaign_findings")]
+    public async Task<string> GetCampaignFindings(
+        [McpToolTrigger("get_campaign_findings", "Get findings for a campaign, optionally filtered by status")] ToolInvocationContext context,
+        [McpToolProperty("campaignId", "Campaign ID", isRequired: true)] string campaignId,
+        [McpToolProperty("status", "Filter by status: new, pending_approval, issue_created, resolved, skipped, duplicate, dismissed")] string? status)
+    {
+        _logger.LogInformation("MCP tool invoked: get_campaign_findings");
+        return await _campaignTool.GetCampaignFindingsAsync(campaignId, status);
+    }
+
+    [Function("mcp_list_campaign_templates")]
+    public Task<string> ListCampaignTemplates(
+        [McpToolTrigger("list_campaign_templates", "List available pre-built campaign templates for common scenarios like security hardening and cost optimisation")] ToolInvocationContext context)
+    {
+        _logger.LogInformation("MCP tool invoked: list_campaign_templates");
+        return _campaignTool.ListCampaignTemplatesAsync();
+    }
+
+    [Function("mcp_create_campaign_from_template")]
+    public async Task<string> CreateCampaignFromTemplate(
+        [McpToolTrigger("create_campaign_from_template", "Create a campaign from a pre-built template by template ID")] ToolInvocationContext context,
+        [McpToolProperty("templateId", "Template ID (e.g., security-hardening, dependency-updates, cost-optimisation)", isRequired: true)] string templateId,
+        [McpToolProperty("name", "Optional custom name for the campaign")] string? name,
+        [McpToolProperty("assignTo", "Assignee for created issues (use 'copilot' for Copilot coding agent)")] string? assignTo)
+    {
+        _logger.LogInformation("MCP tool invoked: create_campaign_from_template");
+        return await _campaignTool.CreateCampaignFromTemplateAsync(templateId, name, assignTo);
     }
 }

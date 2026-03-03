@@ -38,6 +38,7 @@ resource "azurerm_linux_function_app" "function_app" {
   auth_settings_v2 {
     auth_enabled           = true
     require_authentication = true
+    unauthenticated_action = "Return401"
 
     active_directory_v2 {
       client_id            = local.idp_agents_app_client_id
@@ -48,7 +49,10 @@ resource "azurerm_linux_function_app" "function_app" {
       ]
     }
 
-    login {}
+    login {
+      # Allow unauthenticated access to OAuth metadata endpoint for MCP client discovery
+      excluded_paths = ["/.well-known/oauth-protected-resource"]
+    }
   }
 
   app_settings = {
