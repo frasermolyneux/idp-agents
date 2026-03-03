@@ -12,6 +12,31 @@ using Microsoft.SemanticKernel.Embeddings;
 
 namespace MX.IDP.Agents.Services;
 
+public class KnowledgeIndexStats
+{
+    public long TotalChunks { get; set; }
+    public int TotalDocuments { get; set; }
+    public int TotalSources { get; set; }
+    public List<KnowledgeSourceStats> Sources { get; set; } = [];
+}
+
+public class KnowledgeSourceStats
+{
+    public string SourceType { get; set; } = "";
+    public string SourceName { get; set; } = "";
+    public long ChunkCount { get; set; }
+    public int DocumentCount { get; set; }
+    public List<KnowledgeDocumentInfo> Documents { get; set; } = [];
+}
+
+public class KnowledgeDocumentInfo
+{
+    public string Title { get; set; } = "";
+    public string FilePath { get; set; } = "";
+    public int ChunkCount { get; set; }
+    public DateTimeOffset? LastUpdated { get; set; }
+}
+
 public interface IKnowledgeIndexService
 {
     Task EnsureIndexExistsAsync();
@@ -19,6 +44,7 @@ public interface IKnowledgeIndexService
     Task<string> SearchAsync(string query, string? sourceType = null, string? sourceName = null, int maxResults = 5);
     Task<string> ListSourcesAsync();
     Task DeleteSourceAsync(string sourceType, string sourceName);
+    Task<KnowledgeIndexStats> GetIndexStatsAsync();
 }
 
 #pragma warning disable SKEXP0001
@@ -225,6 +251,76 @@ public class KnowledgeIndexService : IKnowledgeIndexService
             _logger.LogInformation("Deleted {Count} documents for {SourceType}/{SourceName}",
                 batch.Actions.Count, sourceType, sourceName);
         }
+    }
+
+    public async Task<KnowledgeIndexStats> GetIndexStatsAsync()
+    {
+        await EnsureIndexExistsAsync();
+
+        var searchOptions = new SearchOptions
+        {
+            Size = 1000,
+            IncludeTotalCount = true,
+            Select = { "title", "source_type", "source_name", "file_path", "chunk_index", "last_updated" },
+            OrderBy = { "source_name asc", "file_path asc" }
+        };
+
+        var results = await _searchClient.SearchAsync<SearchDocument>("*", searchOptions);
+
+        var docs = new List<SearchDocument>();
+        await foreach (var result in results.Value.GetResultsAsync())
+        {
+            docs.Add(result.Document);
+        }
+
+        var stats = new KnowledgeIndexStats
+        {
+            TotalChunks = results.Value.TotalCount ?? docs.Count
+        };
+
+        var sourceGroups = docs.GroupBy(d => new
+        {
+            SourceType = d.GetString("source_type"),
+            SourceName = d.GetString("source_name")
+        });
+
+        var uniqueDocPaths = new HashSet<string>();
+
+        foreach (var group in sourceGroups)
+        {
+            var sourceStats = new KnowledgeSourceStats
+            {
+                SourceType = group.Key.SourceType,
+                SourceName = group.Key.SourceName,
+                ChunkCount = group.Count()
+            };
+
+            var fileGroups = group.GroupBy(d => d.GetString("file_path"));
+            foreach (var fileGroup in fileGroups)
+            {
+                var firstChunk = fileGroup.First();
+                DateTimeOffset? lastUpdated = null;
+                if (firstChunk.TryGetValue("last_updated", out var lu) && lu is DateTimeOffset dt)
+                    lastUpdated = dt;
+
+                sourceStats.Documents.Add(new KnowledgeDocumentInfo
+                {
+                    Title = firstChunk.GetString("title"),
+                    FilePath = fileGroup.Key,
+                    ChunkCount = fileGroup.Count(),
+                    LastUpdated = lastUpdated
+                });
+                uniqueDocPaths.Add($"{group.Key.SourceType}:{group.Key.SourceName}:{fileGroup.Key}");
+            }
+
+            sourceStats.DocumentCount = sourceStats.Documents.Count;
+            stats.Sources.Add(sourceStats);
+        }
+
+        stats.TotalDocuments = uniqueDocPaths.Count;
+        stats.TotalSources = stats.Sources.Count;
+
+        return stats;
     }
 
     public static List<string> ChunkText(string text)

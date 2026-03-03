@@ -67,12 +67,25 @@ public class KnowledgeIndexerFunctions
     }
 
     /// <summary>
+    /// HTTP trigger — get knowledge index statistics.
+    /// GET /api/knowledge/stats
+    /// </summary>
+    [Function("GetKnowledgeStats")]
+    public async Task<IActionResult> GetKnowledgeStats(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "knowledge/stats")] HttpRequest req)
+    {
+        _logger.LogInformation("Knowledge stats requested");
+        var stats = await _indexService.GetIndexStatsAsync();
+        return new OkObjectResult(stats);
+    }
+
+    /// <summary>
     /// HTTP trigger — manual reindex endpoint.
     /// POST /api/knowledge/reindex?sourceType=github_repo|blob_storage|all
     /// </summary>
     [Function("TriggerReindex")]
     public async Task<IActionResult> TriggerReindex(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "knowledge/reindex")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "knowledge/reindex")] HttpRequest req)
     {
         var sourceType = req.Query["sourceType"].FirstOrDefault() ?? "all";
         _logger.LogInformation("Manual reindex triggered for source type: {SourceType}", sourceType);
