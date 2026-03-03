@@ -11,7 +11,7 @@
   },
   "extensions": {
     "mcp": {
-      "instructions": "Internal Developer Platform MCP server (v3). 29 tools: Azure subscriptions, Resource Graph queries, Advisor recommendations, Policy compliance, GitHub repos/issues/PRs/actions/code-search/labels, knowledge base search, and campaign management with lifecycle (create, preview, run, pause, resume, cancel, templates).",
+      "instructions": "Internal Developer Platform MCP server (v3). 31 tools: Azure subscriptions, Resource Graph queries, Advisor recommendations, Policy compliance, GitHub repos/issues/PRs/actions/code-search/labels/dependabot-alerts/code-scanning-alerts, knowledge base search, and campaign management with lifecycle (create, preview, run, pause, resume, cancel, templates).",
       "serverName": "idp-agents",
       "serverVersion": "3.0.0"
     }

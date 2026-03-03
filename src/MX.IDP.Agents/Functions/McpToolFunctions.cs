@@ -309,6 +309,26 @@ public class McpToolFunctions
         return await _gitHubTool.AddLabelAsync(repo, int.Parse(issueNumber), labels);
     }
 
+    [Function("mcp_get_dependabot_alerts")]
+    public async Task<string> GetDependabotAlerts(
+        [McpToolTrigger("get_dependabot_alerts", "Get Dependabot security alerts for a repository or all repositories. Returns vulnerability details including severity, package, and advisory info.")] ToolInvocationContext context,
+        [McpToolProperty("repo", "Repository name (leave empty for all repos)")] string? repo,
+        [McpToolProperty("severity", "Filter by severity: critical, high, medium, low")] string? severity)
+    {
+        _logger.LogInformation("MCP tool invoked: get_dependabot_alerts");
+        return await _gitHubTool.GetDependabotAlertsAsync(repo, severity);
+    }
+
+    [Function("mcp_get_code_scanning_alerts")]
+    public async Task<string> GetCodeScanningAlerts(
+        [McpToolTrigger("get_code_scanning_alerts", "Get CodeQL/code scanning alerts for a repository or all repositories. Returns code vulnerability details including severity, rule, and location.")] ToolInvocationContext context,
+        [McpToolProperty("repo", "Repository name (leave empty for all repos)")] string? repo,
+        [McpToolProperty("severity", "Filter by severity: critical, high, medium, low")] string? severity)
+    {
+        _logger.LogInformation("MCP tool invoked: get_code_scanning_alerts");
+        return await _gitHubTool.GetCodeScanningAlertsAsync(repo, severity);
+    }
+
     // Campaign lifecycle tools
 
     [Function("mcp_preview_campaign")]

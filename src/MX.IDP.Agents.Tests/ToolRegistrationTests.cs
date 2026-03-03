@@ -157,6 +157,8 @@ public class ToolRegistrationTests
     [InlineData("GetRepoStatsAsync", "get_repo_stats")]
     [InlineData("CloseOrReopenIssueAsync", "close_or_reopen_issue")]
     [InlineData("AddLabelAsync", "add_label")]
+    [InlineData("GetDependabotAlertsAsync", "get_dependabot_alerts")]
+    [InlineData("GetCodeScanningAlertsAsync", "get_code_scanning_alerts")]
     public void GitHubTool_HasKernelFunctions(string methodName, string functionName)
     {
         var method = typeof(GitHubTool).GetMethod(methodName);

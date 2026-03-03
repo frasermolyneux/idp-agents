@@ -228,4 +228,28 @@ public class GitHubTool
         var result = await _ghService.AddLabelAsync(repo, issueNumber, labelList);
         return JsonSerializer.Serialize(result, JsonOpts);
     }
+
+    [KernelFunction("get_dependabot_alerts")]
+    [Description("Gets Dependabot security alerts for a repository or all repositories. Returns vulnerability details including severity, package, and advisory info. Use this instead of list_issues for dependency vulnerabilities.")]
+    public async Task<string> GetDependabotAlertsAsync(
+        [Description("Optional: repository name (e.g. 'idp-core'). Leave empty to check all repos.")] string? repo = null,
+        [Description("Optional: filter by severity — critical, high, medium, low")] string? severity = null)
+    {
+        Track("get_dependabot_alerts", new() { ["Repo"] = repo ?? "all" });
+        var repos = string.IsNullOrEmpty(repo) ? null : new List<string> { repo };
+        var result = await _ghService.GetDependabotAlertsAsync(repos, severity);
+        return JsonSerializer.Serialize(result, JsonOpts);
+    }
+
+    [KernelFunction("get_code_scanning_alerts")]
+    [Description("Gets CodeQL / code scanning alerts for a repository or all repositories. Returns code vulnerability details including severity, rule, and location. Use this instead of list_issues for code scanning results.")]
+    public async Task<string> GetCodeScanningAlertsAsync(
+        [Description("Optional: repository name (e.g. 'idp-core'). Leave empty to check all repos.")] string? repo = null,
+        [Description("Optional: filter by severity — critical, high, medium, low")] string? severity = null)
+    {
+        Track("get_code_scanning_alerts", new() { ["Repo"] = repo ?? "all" });
+        var repos = string.IsNullOrEmpty(repo) ? null : new List<string> { repo };
+        var result = await _ghService.GetCodeScanningAlertsAsync(repos, severity);
+        return JsonSerializer.Serialize(result, JsonOpts);
+    }
 }
