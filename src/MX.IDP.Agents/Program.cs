@@ -90,6 +90,9 @@ builder.Services.AddSingleton<ICampaignDataSource, AdvisorCampaignSource>();
 builder.Services.AddSingleton<ICampaignDataSource, PolicyCampaignSource>();
 builder.Services.AddSingleton<ICampaignDataSource, DevStandardsCampaignSource>();
 builder.Services.AddSingleton<ICampaignDataSource, RepoConfigCampaignSource>();
+builder.Services.AddSingleton<ICampaignDataSource, DependabotCampaignSource>();
+builder.Services.AddSingleton<ICampaignDataSource, CodeQLCampaignSource>();
+builder.Services.AddSingleton<ICampaignDataSource, KqlCampaignSource>();
 builder.Services.AddSingleton<ICampaignOrchestrationService, CampaignOrchestrationService>();
 builder.Services.AddSingleton<CampaignTool>();
 

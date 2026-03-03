@@ -17,6 +17,7 @@ public interface ICampaignService
     Task<Campaign> UpdateAsync(Campaign campaign);
     Task DeleteAsync(string campaignId, string userId);
     Task<List<CampaignFinding>> GetFindingsAsync(string campaignId, string? status = null);
+    Task<CampaignFinding?> GetFindingAsync(string findingId, string campaignId);
     Task UpsertFindingAsync(CampaignFinding finding);
     Task UpsertFindingsBatchAsync(IEnumerable<CampaignFinding> findings);
 }
@@ -104,6 +105,19 @@ public class CampaignService : ICampaignService
             findings.AddRange(response);
         }
         return findings;
+    }
+
+    public async Task<CampaignFinding?> GetFindingAsync(string findingId, string campaignId)
+    {
+        try
+        {
+            var response = await _findingsContainer.ReadItemAsync<CampaignFinding>(findingId, new PartitionKey(campaignId));
+            return response.Resource;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
     }
 
     public async Task UpsertFindingAsync(CampaignFinding finding)

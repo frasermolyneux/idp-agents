@@ -122,20 +122,30 @@ public class KnowledgeIndexService : IKnowledgeIndexService
     public async Task<string> SearchAsync(string query, string? sourceType = null, string? sourceName = null, int maxResults = 5)
     {
         await EnsureIndexExistsAsync();
-        var embedding = await GenerateEmbeddingAsync(query);
 
         var searchOptions = new SearchOptions
         {
             Size = maxResults,
+            SearchMode = SearchMode.Any,
             Select = { "title", "content", "source_type", "source_name", "file_path", "chunk_index" }
         };
 
-        searchOptions.VectorSearch = new VectorSearchOptions();
-        searchOptions.VectorSearch.Queries.Add(new VectorizedQuery(embedding)
+        // Add vector search
+        try
         {
-            KNearestNeighborsCount = maxResults * 2,
-            Fields = { "content_vector" }
-        });
+            var embedding = await GenerateEmbeddingAsync(query);
+            searchOptions.VectorSearch = new VectorSearchOptions();
+            searchOptions.VectorSearch.Queries.Add(new VectorizedQuery(embedding)
+            {
+                KNearestNeighborsCount = maxResults * 2,
+                Fields = { "content_vector" }
+            });
+        }
+        catch (Exception ex)
+        {
+            // Fall back to text-only search if embedding fails
+            _logger.LogWarning(ex, "Failed to generate embedding for query, falling back to text search");
+        }
 
         var filters = new List<string>();
         if (sourceType is not null) filters.Add($"source_type eq '{sourceType}'");
@@ -157,6 +167,8 @@ public class KnowledgeIndexService : IKnowledgeIndexService
                 score = result.Score
             });
         }
+
+        _logger.LogInformation("Knowledge search for '{Query}' returned {Count} results", query, hits.Count);
 
         return JsonSerializer.Serialize(new { count = hits.Count, results = hits },
             new JsonSerializerOptions { WriteIndented = true });

@@ -17,13 +17,16 @@ public class Campaign
     public string Description { get; set; } = string.Empty;
 
     [JsonProperty("sourceType")]
-    public string SourceType { get; set; } = string.Empty; // advisor, policy, dev_standards, repo_config
+    public string SourceType { get; set; } = string.Empty; // advisor, policy, dev_standards, repo_config, dependabot, codeql, kql
 
     [JsonProperty("status")]
     public string Status { get; set; } = "created"; // created, running, paused, completed, failed
 
     [JsonProperty("filter")]
     public CampaignFilter? Filter { get; set; }
+
+    [JsonProperty("kqlQuery")]
+    public string? KqlQuery { get; set; } // Custom KQL query for kql source type
 
     [JsonProperty("stats")]
     public CampaignStats Stats { get; set; } = new();
@@ -110,7 +113,7 @@ public class CampaignFinding
     public string? IssueUrl { get; set; }
 
     [JsonProperty("status")]
-    public string Status { get; set; } = "new"; // new, issue_created, resolved, skipped, duplicate
+    public string Status { get; set; } = "new"; // new, pending_approval, issue_created, resolved, skipped, duplicate, dismissed, stale
 
     [JsonProperty("deduplicationKey")]
     public string DeduplicationKey { get; set; } = string.Empty;

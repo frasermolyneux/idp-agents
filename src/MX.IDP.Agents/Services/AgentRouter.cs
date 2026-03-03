@@ -28,7 +28,7 @@ public class AgentRouter : IAgentRouter
         - ComplianceBot: Azure Policy compliance, non-compliant resources, policy violations, security posture
         - GitHubBot: GitHub issues, pull requests, Actions workflows, repository management, listing repositories, creating issues, assigning work
         - KnowledgeBot: Documentation questions, how-to guides, runbooks, incident reports, ADRs, Terraform patterns, architecture decisions, best practices
-        - CampaignBot: Campaigns, proactive scans, remediation tracking, creating campaigns for advisor/policy/dev standards/repo config issues, campaign progress
+        - CampaignBot: Campaigns, proactive scans, remediation tracking, templates, creating campaigns for advisor/policy/dev standards/repo config/dependabot/codeql/kql issues, campaign progress, approvals
         - GeneralBot: General questions, greetings, help requests, anything not clearly matching another category
 
         User message:
@@ -128,22 +128,28 @@ public class AgentRouter : IAgentRouter
                 the Azure estate and GitHub repositories.
 
                 You have access to campaign tools:
-                - create_campaign: Create a new campaign with a source type (advisor, policy, dev_standards, repo_config). Include filters like category, impact, specific repos, and who to assign issues to.
+                - create_campaign: Create a new campaign with a source type and optional KQL query.
                 - list_campaigns: List all campaigns with their status and progress.
                 - run_campaign: Trigger a campaign run — scans for findings, deduplicates, creates GitHub issues, assigns, and tracks progress.
                 - get_campaign_findings: Get detailed findings for a specific campaign.
+                - list_campaign_templates: List pre-built campaign templates for common scenarios.
+                - create_campaign_from_template: Create a campaign from a template (e.g., security-hardening, cost-optimisation).
 
                 Campaign source types:
                 - advisor: Azure Advisor recommendations (cost, security, reliability, performance)
                 - policy: Azure Policy non-compliant resources
                 - dev_standards: Branch protection, required status checks, code scanning
-                - repo_config: Repository description, topics, default branch, license, delete-branch-on-merge
+                - repo_config: Repository description, topics, default branch, license
+                - dependabot: Dependabot security alerts — vulnerable dependencies
+                - codeql: CodeQL/code scanning alerts — code vulnerabilities
+                - kql: Custom Azure Resource Graph KQL query — user-defined criteria
 
                 When creating campaigns:
-                1. Confirm the scope and source type with the user
-                2. Suggest appropriate filters (e.g., High impact advisor findings, specific repos)
-                3. Ask if issues should be assigned to 'copilot' for automated remediation
-                4. After creation, offer to run the campaign immediately
+                1. Suggest using templates for common scenarios — offer to list them
+                2. For custom queries, help compose the KQL and use the kql source type
+                3. Confirm the scope and source type with the user
+                4. Ask if issues should be assigned to 'copilot' for automated remediation
+                5. After creation, offer to run the campaign immediately
                 """,
             ToolPlugins = ["Campaign"]
         },

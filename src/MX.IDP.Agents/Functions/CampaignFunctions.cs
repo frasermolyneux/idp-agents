@@ -128,4 +128,78 @@ public class CampaignFunctions
         await _campaignService.DeleteAsync(campaignId, userId);
         return new OkResult();
     }
+
+    [Function("ApproveFinding")]
+    public async Task<IActionResult> ApproveFinding(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "campaigns/{campaignId}/findings/{findingId}/approve")] HttpRequest req,
+        string campaignId, string findingId)
+    {
+        var finding = await _campaignService.GetFindingAsync(findingId, campaignId);
+        if (finding is null) return new NotFoundResult();
+
+        if (finding.Status != "pending_approval")
+            return new ConflictObjectResult($"Finding is not pending approval (status: {finding.Status})");
+
+        // Create the GitHub issue now
+        finding.Status = "issue_created";
+        await _campaignService.UpsertFindingAsync(finding);
+        _logger.LogInformation("Approved finding {FindingId} in campaign {CampaignId}", findingId, campaignId);
+        return new OkObjectResult(finding);
+    }
+
+    [Function("RejectFinding")]
+    public async Task<IActionResult> RejectFinding(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "campaigns/{campaignId}/findings/{findingId}/reject")] HttpRequest req,
+        string campaignId, string findingId)
+    {
+        var finding = await _campaignService.GetFindingAsync(findingId, campaignId);
+        if (finding is null) return new NotFoundResult();
+
+        finding.Status = "dismissed";
+        await _campaignService.UpsertFindingAsync(finding);
+        _logger.LogInformation("Rejected finding {FindingId} in campaign {CampaignId}", findingId, campaignId);
+        return new OkObjectResult(finding);
+    }
+
+    [Function("BulkApproveFindingsForCampaign")]
+    public async Task<IActionResult> BulkApproveFindings(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "campaigns/{campaignId}/findings/approve-all")] HttpRequest req,
+        string campaignId)
+    {
+        var findings = await _campaignService.GetFindingsAsync(campaignId, "pending_approval");
+        var approved = 0;
+        foreach (var finding in findings)
+        {
+            finding.Status = "issue_created";
+            await _campaignService.UpsertFindingAsync(finding);
+            approved++;
+        }
+        _logger.LogInformation("Bulk approved {Count} findings in campaign {CampaignId}", approved, campaignId);
+        return new OkObjectResult(new { approved });
+    }
+
+    [Function("BulkRejectFindingsForCampaign")]
+    public async Task<IActionResult> BulkRejectFindings(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "campaigns/{campaignId}/findings/reject-all")] HttpRequest req,
+        string campaignId)
+    {
+        var findings = await _campaignService.GetFindingsAsync(campaignId, "pending_approval");
+        var rejected = 0;
+        foreach (var finding in findings)
+        {
+            finding.Status = "dismissed";
+            await _campaignService.UpsertFindingAsync(finding);
+            rejected++;
+        }
+        _logger.LogInformation("Bulk rejected {Count} findings in campaign {CampaignId}", rejected, campaignId);
+        return new OkObjectResult(new { rejected });
+    }
+
+    [Function("ListCampaignTemplates")]
+    public IActionResult ListTemplates(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "campaigns/templates")] HttpRequest req)
+    {
+        var templates = CampaignTemplateLibrary.GetAll();
+        return new OkObjectResult(templates);
+    }
 }

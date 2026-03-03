@@ -49,7 +49,16 @@ public class CampaignOrchestrationService : ICampaignOrchestrationService
 
             // 2. Scan for findings
             _logger.LogInformation("Running campaign '{Name}' with source '{SourceType}'", campaign.Name, campaign.SourceType);
-            var findings = await source.ScanAsync(campaign.Filter);
+            List<CampaignFinding> findings;
+
+            if (source is KqlCampaignSource kqlSource && campaign.SourceType == "kql")
+            {
+                findings = await kqlSource.ScanWithQueryAsync(campaign.KqlQuery, campaign.Filter);
+            }
+            else
+            {
+                findings = await source.ScanAsync(campaign.Filter);
+            }
 
             // 3. Deduplicate against existing findings
             var existingFindings = await _campaignService.GetFindingsAsync(campaign.Id);
@@ -156,12 +165,13 @@ public class CampaignOrchestrationService : ICampaignOrchestrationService
     private async Task UpdateCampaignProgressAsync(Campaign campaign, Octokit.IGitHubClient client)
     {
         var allFindings = await _campaignService.GetFindingsAsync(campaign.Id);
+        var staleDays = 14;
 
-        var issuesCreated = allFindings.Count(f => f.Status == "issue_created" || f.Status == "resolved");
+        var issuesCreated = allFindings.Count(f => f.Status is "issue_created" or "resolved" or "stale");
         var issuesOpen = 0;
         var issuesClosed = 0;
 
-        // Check current state of created issues
+        // Check current state of created issues + detect stale + auto-close
         foreach (var finding in allFindings.Where(f => f.IssueNumber.HasValue && f.Repo is not null))
         {
             try
@@ -174,6 +184,11 @@ public class CampaignOrchestrationService : ICampaignOrchestrationService
                 }
                 else
                 {
+                    // Stale detection: open for more than staleDays
+                    if (issue.CreatedAt < DateTimeOffset.UtcNow.AddDays(-staleDays))
+                    {
+                        finding.Status = "stale";
+                    }
                     issuesOpen++;
                 }
                 await _campaignService.UpsertFindingAsync(finding);
