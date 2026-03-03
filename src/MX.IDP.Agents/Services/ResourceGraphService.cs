@@ -15,7 +15,7 @@ namespace MX.IDP.Agents.Services;
 public interface IResourceGraphService
 {
     Task<ResourceGraphResult> QueryAsync(string kql, string? subscriptionIds = null);
-    Task<ResourceGraphResult> GetAdvisorRecommendationsAsync(string? category = null, string? impact = null, int maxResults = 25);
+    Task<ResourceGraphResult> GetAdvisorRecommendationsAsync(string? category = null, string? impact = null, int maxResults = 25, string? subcategory = null);
     Task<ResourceGraphResult> GetPolicyComplianceSummaryAsync(string? subscriptionId = null);
     Task<ResourceGraphResult> GetNonCompliantResourcesAsync(string? subscriptionId = null, int maxResults = 25);
 }
@@ -70,13 +70,15 @@ public class ResourceGraphService : IResourceGraphService
         };
     }
 
-    public async Task<ResourceGraphResult> GetAdvisorRecommendationsAsync(string? category = null, string? impact = null, int maxResults = 25)
+    public async Task<ResourceGraphResult> GetAdvisorRecommendationsAsync(string? category = null, string? impact = null, int maxResults = 25, string? subcategory = null)
     {
         var filters = new List<string>();
         if (!string.IsNullOrEmpty(category))
             filters.Add($"| where properties.category == '{category}'");
         if (!string.IsNullOrEmpty(impact))
             filters.Add($"| where properties.impact == '{impact}'");
+        if (!string.IsNullOrEmpty(subcategory))
+            filters.Add($"| where properties.recommendationSubcategory == '{subcategory}'");
 
         var query = $@"
             AdvisorResources

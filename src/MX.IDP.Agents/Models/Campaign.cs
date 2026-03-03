@@ -49,6 +49,9 @@ public class CampaignFilter
     [JsonProperty("impact")]
     public string? Impact { get; set; } // High, Medium, Low
 
+    [JsonProperty("subcategory")]
+    public string? Subcategory { get; set; } // For advisor: e.g. ServiceUpgradeAndRetirement
+
     [JsonProperty("subscriptionIds")]
     public List<string>? SubscriptionIds { get; set; }
 

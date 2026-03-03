@@ -109,6 +109,16 @@ public static class CampaignTemplateLibrary
             SourceType = "kql",
             Icon = "🗑️",
             KqlQuery = "resources | where type == 'microsoft.compute/disks' | where properties.diskState == 'Unattached' | project name, type, resourceGroup, subscriptionId, severity='Medium', description=strcat('Unattached disk: ', name, ' in ', resourceGroup)"
+        },
+        new()
+        {
+            Id = "service-retirement",
+            Name = "Service Retirement & Deprecation",
+            Description = "Identify Azure services and features scheduled for retirement or deprecation. Creates tracking issues with retirement dates and migration guidance so you can plan ahead.",
+            Category = "compliance",
+            SourceType = "advisor",
+            Icon = "⏳",
+            DefaultFilter = new CampaignFilter { Category = "Reliability", Subcategory = "ServiceUpgradeAndRetirement" }
         }
     ];
 

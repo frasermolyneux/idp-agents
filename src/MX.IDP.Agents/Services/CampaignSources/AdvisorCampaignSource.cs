@@ -25,7 +25,7 @@ public class AdvisorCampaignSource : ICampaignDataSource
     {
         var findings = new List<CampaignFinding>();
 
-        var result = await _argService.GetAdvisorRecommendationsAsync(filter?.Category, filter?.Impact, 200);
+        var result = await _argService.GetAdvisorRecommendationsAsync(filter?.Category, filter?.Impact, 200, filter?.Subcategory);
 
         var rows = JsonDocument.Parse(result.Data).RootElement;
         foreach (var row in rows.EnumerateArray())

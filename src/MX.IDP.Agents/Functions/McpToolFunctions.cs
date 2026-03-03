@@ -56,14 +56,15 @@ public class McpToolFunctions
 
     [Function("mcp_get_advisor_recommendations")]
     public async Task<string> GetAdvisorRecommendations(
-        [McpToolTrigger("get_advisor_recommendations", "Get Azure Advisor recommendations across all subscriptions for cost, security, reliability, and performance")] ToolInvocationContext context,
+        [McpToolTrigger("get_advisor_recommendations", "Get Azure Advisor recommendations across all subscriptions for cost, security, reliability, and performance. Use subcategory ServiceUpgradeAndRetirement to find deprecated/retiring services.")] ToolInvocationContext context,
         [McpToolProperty("category", "Filter by category: Cost, Security, Reliability, OperationalExcellence, Performance")] string? category,
         [McpToolProperty("impact", "Filter by impact: High, Medium, Low")] string? impact,
-        [McpToolProperty("maxResults", "Maximum number of results to return (default 25)")] string? maxResults)
+        [McpToolProperty("maxResults", "Maximum number of results to return (default 25)")] string? maxResults,
+        [McpToolProperty("subcategory", "Filter by subcategory, e.g. ServiceUpgradeAndRetirement for deprecated/retiring services")] string? subcategory)
     {
         _logger.LogInformation("MCP tool invoked: get_advisor_recommendations");
         var max = int.TryParse(maxResults, out var m) ? m : 25;
-        return await _advisorTool.GetRecommendationsAsync(category, impact, max);
+        return await _advisorTool.GetRecommendationsAsync(category, impact, max, subcategory);
     }
 
     [Function("mcp_get_policy_compliance")]
