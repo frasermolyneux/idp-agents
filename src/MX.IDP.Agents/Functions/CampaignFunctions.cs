@@ -28,7 +28,7 @@ public class CampaignFunctions
 
     [Function("CreateCampaign")]
     public async Task<IActionResult> CreateCampaign(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "campaigns")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "campaigns")] HttpRequest req)
     {
         var body = await new StreamReader(req.Body).ReadToEndAsync();
         var campaign = JsonSerializer.Deserialize<Campaign>(body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
@@ -44,7 +44,7 @@ public class CampaignFunctions
 
     [Function("ListCampaigns")]
     public async Task<IActionResult> ListCampaigns(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "campaigns")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "campaigns")] HttpRequest req)
     {
         var userId = req.Query["userId"].FirstOrDefault() ?? "system";
         var status = req.Query["status"].FirstOrDefault();
@@ -54,7 +54,7 @@ public class CampaignFunctions
 
     [Function("GetCampaign")]
     public async Task<IActionResult> GetCampaign(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "campaigns/{campaignId}")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "campaigns/{campaignId}")] HttpRequest req,
         string campaignId)
     {
         var userId = req.Query["userId"].FirstOrDefault() ?? "system";
@@ -65,7 +65,7 @@ public class CampaignFunctions
 
     [Function("GetCampaignFindings")]
     public async Task<IActionResult> GetCampaignFindings(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "campaigns/{campaignId}/findings")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "campaigns/{campaignId}/findings")] HttpRequest req,
         string campaignId)
     {
         var status = req.Query["status"].FirstOrDefault();
@@ -75,7 +75,7 @@ public class CampaignFunctions
 
     [Function("TriggerCampaign")]
     public async Task<IActionResult> TriggerCampaign(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "campaigns/{campaignId}/run")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "campaigns/{campaignId}/run")] HttpRequest req,
         string campaignId)
     {
         var userId = req.Query["userId"].FirstOrDefault() ?? "system";
@@ -91,7 +91,7 @@ public class CampaignFunctions
 
     [Function("PauseCampaign")]
     public async Task<IActionResult> PauseCampaign(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "campaigns/{campaignId}/pause")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "campaigns/{campaignId}/pause")] HttpRequest req,
         string campaignId)
     {
         var userId = req.Query["userId"].FirstOrDefault() ?? "system";
@@ -105,7 +105,7 @@ public class CampaignFunctions
 
     [Function("ResumeCampaign")]
     public async Task<IActionResult> ResumeCampaign(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "campaigns/{campaignId}/resume")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "campaigns/{campaignId}/resume")] HttpRequest req,
         string campaignId)
     {
         var userId = req.Query["userId"].FirstOrDefault() ?? "system";
@@ -121,7 +121,7 @@ public class CampaignFunctions
 
     [Function("DeleteCampaign")]
     public async Task<IActionResult> DeleteCampaign(
-        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "campaigns/{campaignId}")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "campaigns/{campaignId}")] HttpRequest req,
         string campaignId)
     {
         var userId = req.Query["userId"].FirstOrDefault() ?? "system";
