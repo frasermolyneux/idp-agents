@@ -19,8 +19,9 @@ public static class Extensions
             http.AddStandardResilienceHandler(options =>
             {
                 // Azure OpenAI completions with tool calling can take several minutes
-                options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(3);
-                options.AttemptTimeout.Timeout = TimeSpan.FromMinutes(3);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(5);
+                options.AttemptTimeout.Timeout = TimeSpan.FromMinutes(5);
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromMinutes(10);
             });
             http.AddServiceDiscovery();
         });
