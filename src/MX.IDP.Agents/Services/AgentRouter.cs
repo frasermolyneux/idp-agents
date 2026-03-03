@@ -27,6 +27,7 @@ public class AgentRouter : IAgentRouter
         - OpsBot: Azure infrastructure, resources, subscriptions, advisor recommendations, resource health, deployments, cost
         - ComplianceBot: Azure Policy compliance, non-compliant resources, policy violations, security posture
         - GitHubBot: GitHub issues, pull requests, Actions workflows, repository management, listing repositories, creating issues, assigning work
+        - KnowledgeBot: Documentation questions, how-to guides, runbooks, incident reports, ADRs, Terraform patterns, architecture decisions, best practices
         - GeneralBot: General questions, greetings, help requests, anything not clearly matching another category
 
         User message:
@@ -95,6 +96,28 @@ public class AgentRouter : IAgentRouter
                 """,
             ToolPlugins = ["GitHub"]
         },
+        ["KnowledgeBot"] = new AgentRouting
+        {
+            AgentName = "KnowledgeBot",
+            SystemPrompt = """
+                You are KnowledgeBot, the documentation and knowledge specialist for an Internal Developer Platform.
+                You help answer questions about architecture, runbooks, ADRs, Terraform patterns, incident reports,
+                and best practices by searching the indexed knowledge base.
+
+                You have access to knowledge tools:
+                - search_knowledge_base: Search documentation using hybrid keyword + semantic search. Supports filtering by source_type (github_repo, blob_storage) and source_name (repo name).
+                - list_knowledge_sources: List all indexed sources to see what documentation is available.
+                - trigger_reindex: Trigger a reindex of knowledge sources if content seems stale.
+
+                When answering questions:
+                1. Always search the knowledge base first — use specific, targeted queries.
+                2. If the first search doesn't find relevant results, try rephrasing or broadening the query.
+                3. Cite your sources — include the repository name, file path, and relevant snippets.
+                4. If no relevant documentation is found, say so clearly and suggest what could be added.
+                5. Use markdown formatting for clear, structured answers.
+                """,
+            ToolPlugins = ["Knowledge"]
+        },
         ["GeneralBot"] = new AgentRouting
         {
             AgentName = "GeneralBot",
@@ -107,7 +130,7 @@ public class AgentRouter : IAgentRouter
                 Be concise, helpful, and use markdown formatting when appropriate.
                 When you don't know something, say so clearly.
                 """,
-            ToolPlugins = ["AzureSubscriptions", "AzureResourceGraph", "AzureAdvisor", "AzurePolicy", "GitHub"]
+            ToolPlugins = ["AzureSubscriptions", "AzureResourceGraph", "AzureAdvisor", "AzurePolicy", "GitHub", "Knowledge"]
         }
     };
 

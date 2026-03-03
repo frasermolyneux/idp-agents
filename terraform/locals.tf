@@ -8,6 +8,9 @@ locals {
   agents_identity_client_id    = data.terraform_remote_state.idp_core.outputs.idp_agents_mi_client_id
   agents_identity_principal_id = data.terraform_remote_state.idp_core.outputs.idp_agents_mi_principal_id
 
+  ai_search_endpoint          = data.terraform_remote_state.idp_core.outputs.ai_search_endpoint
+  knowledge_storage_endpoint  = data.terraform_remote_state.idp_core.outputs.knowledge_storage_endpoint
+
   app_insights_connection_string   = data.terraform_remote_state.idp_core.outputs.app_insights_connection_string
   app_insights_instrumentation_key = data.terraform_remote_state.idp_core.outputs.app_insights_instrumentation_key
 

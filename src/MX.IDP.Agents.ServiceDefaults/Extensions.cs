@@ -16,7 +16,12 @@ public static class Extensions
         builder.Services.AddServiceDiscovery();
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            http.AddStandardResilienceHandler();
+            http.AddStandardResilienceHandler(options =>
+            {
+                // Azure OpenAI completions with tool calling can take several minutes
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(3);
+                options.AttemptTimeout.Timeout = TimeSpan.FromMinutes(3);
+            });
             http.AddServiceDiscovery();
         });
 

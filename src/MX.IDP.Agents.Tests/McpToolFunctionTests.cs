@@ -22,6 +22,9 @@ public class McpToolFunctionTests
     [InlineData("mcp_list_issues", "ListIssues")]
     [InlineData("mcp_get_actions_status", "GetActionsStatus")]
     [InlineData("mcp_assign_issue", "AssignIssue")]
+    [InlineData("mcp_search_knowledge", "SearchKnowledge")]
+    [InlineData("mcp_list_knowledge_sources", "ListKnowledgeSources")]
+    [InlineData("mcp_trigger_reindex", "TriggerKnowledgeReindex")]
     public void McpToolFunction_HasFunctionAttribute(string functionName, string methodName)
     {
         var method = typeof(McpToolFunctions).GetMethod(methodName);
@@ -43,6 +46,9 @@ public class McpToolFunctionTests
     [InlineData("ListIssues", "list_issues")]
     [InlineData("GetActionsStatus", "get_actions_status")]
     [InlineData("AssignIssue", "assign_issue")]
+    [InlineData("SearchKnowledge", "search_knowledge_base")]
+    [InlineData("ListKnowledgeSources", "list_knowledge_sources")]
+    [InlineData("TriggerKnowledgeReindex", "trigger_reindex")]
     public void McpToolFunction_HasMcpToolTrigger(string methodName, string toolName)
     {
         var method = typeof(McpToolFunctions).GetMethod(methodName);
@@ -66,7 +72,7 @@ public class McpToolFunctionTests
             .Where(m => m.GetCustomAttribute<FunctionAttribute>() is not null)
             .ToList();
 
-        Assert.Equal(9, methods.Count);
+        Assert.Equal(12, methods.Count);
     }
 
     [Fact]

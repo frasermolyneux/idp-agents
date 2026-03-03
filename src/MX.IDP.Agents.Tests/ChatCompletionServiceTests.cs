@@ -46,7 +46,8 @@ public class ChatCompletionServiceTests
             new ResourceGraphTool(mockArmClient.Object),
             new AdvisorTool(mockArmClient.Object),
             new PolicyTool(mockArmClient.Object),
-            new GitHubTool(Mock.Of<IGitHubClientFactory>()));
+            new GitHubTool(Mock.Of<IGitHubClientFactory>()),
+            new KnowledgeTool(Mock.Of<IKnowledgeIndexService>()));
     }
 
     private void SetupChatCompletion(string responseContent)

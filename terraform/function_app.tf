@@ -57,8 +57,11 @@ resource "azurerm_linux_function_app" "function_app" {
     "AzureAd__TenantId"           = data.azurerm_client_config.current.tenant_id
     "AzureAd__ClientId"           = local.idp_agents_app_client_id
     "AzureAd__Audience"           = format("api://%s/idp-agents-%s", data.azurerm_client_config.current.tenant_id, var.environment)
-    "AzureOpenAI__Endpoint"       = local.openai_endpoint
-    "AzureOpenAI__ChatDeployment" = "gpt-4.1-mini"
+    "AzureOpenAI__Endpoint"             = local.openai_endpoint
+    "AzureOpenAI__ChatDeployment"       = "gpt-4.1-mini"
+    "AzureOpenAI__EmbeddingDeployment"  = "text-embedding-ada-002"
+    "AzureSearch__Endpoint"             = local.ai_search_endpoint
+    "KnowledgeStorage__serviceUri"      = local.knowledge_storage_endpoint
     "KeyVault__Uri"               = local.key_vault_uri
     "CosmosDb__Endpoint"          = local.cosmosdb_endpoint
     "GitHubApp__AppId"            = local.github_app_id

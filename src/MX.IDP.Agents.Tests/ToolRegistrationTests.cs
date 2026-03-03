@@ -128,6 +128,7 @@ public class ToolRegistrationTests
         var advisorTool = new AdvisorTool(armClient);
         var policyTool = new PolicyTool(armClient);
         var gitHubTool = new GitHubTool(Moq.Mock.Of<MX.IDP.Agents.Services.IGitHubClientFactory>());
+        var knowledgeTool = new KnowledgeTool(Moq.Mock.Of<MX.IDP.Agents.Services.IKnowledgeIndexService>());
 
         // These should not throw — verifies SK function metadata is valid
         kernel.Plugins.AddFromObject(subscriptionTool, "AzureSubscriptions");
@@ -135,8 +136,9 @@ public class ToolRegistrationTests
         kernel.Plugins.AddFromObject(advisorTool, "AzureAdvisor");
         kernel.Plugins.AddFromObject(policyTool, "AzurePolicy");
         kernel.Plugins.AddFromObject(gitHubTool, "GitHub");
+        kernel.Plugins.AddFromObject(knowledgeTool, "Knowledge");
 
-        Assert.Equal(5, kernel.Plugins.Count);
+        Assert.Equal(6, kernel.Plugins.Count);
     }
 
     [Theory]
@@ -149,6 +151,21 @@ public class ToolRegistrationTests
     public void GitHubTool_HasKernelFunctions(string methodName, string functionName)
     {
         var method = typeof(GitHubTool).GetMethod(methodName);
+        Assert.NotNull(method);
+
+        var attr = method!.GetCustomAttribute<KernelFunctionAttribute>();
+        Assert.NotNull(attr);
+        Assert.Equal(functionName, attr!.Name);
+    }
+
+    [Theory]
+    [Trait("Category", "Unit")]
+    [InlineData("SearchKnowledgeBaseAsync", "search_knowledge_base")]
+    [InlineData("ListKnowledgeSourcesAsync", "list_knowledge_sources")]
+    [InlineData("TriggerReindexAsync", "trigger_reindex")]
+    public void KnowledgeTool_HasKernelFunctions(string methodName, string functionName)
+    {
+        var method = typeof(KnowledgeTool).GetMethod(methodName);
         Assert.NotNull(method);
 
         var attr = method!.GetCustomAttribute<KernelFunctionAttribute>();

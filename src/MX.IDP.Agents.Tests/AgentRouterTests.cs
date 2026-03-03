@@ -144,6 +144,19 @@ public class AgentRouterTests
         Assert.Contains("GitHub", result.ToolPlugins);
     }
 
+    [Fact]
+    [Trait("Category", "Unit")]
+    public async Task RouteAsync_KnowledgeBot_ReturnsKnowledgeBotRouting()
+    {
+        SetupTriageResponse("KnowledgeBot");
+
+        var result = await _sut.RouteAsync("How do we handle DNS delegation?");
+
+        Assert.Equal("KnowledgeBot", result.AgentName);
+        Assert.Contains("Knowledge", result.ToolPlugins);
+        Assert.Contains("KnowledgeBot", result.SystemPrompt);
+    }
+
     private void SetupTriageResponse(string agentName)
     {
         _mockChatCompletion

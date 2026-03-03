@@ -13,6 +13,7 @@ public class McpToolFunctions
     private readonly AdvisorTool _advisorTool;
     private readonly PolicyTool _policyTool;
     private readonly GitHubTool _gitHubTool;
+    private readonly KnowledgeTool _knowledgeTool;
     private readonly ILogger<McpToolFunctions> _logger;
 
     public McpToolFunctions(
@@ -21,6 +22,7 @@ public class McpToolFunctions
         AdvisorTool advisorTool,
         PolicyTool policyTool,
         GitHubTool gitHubTool,
+        KnowledgeTool knowledgeTool,
         ILogger<McpToolFunctions> logger)
     {
         _subscriptionTool = subscriptionTool;
@@ -28,6 +30,7 @@ public class McpToolFunctions
         _advisorTool = advisorTool;
         _policyTool = policyTool;
         _gitHubTool = gitHubTool;
+        _knowledgeTool = knowledgeTool;
         _logger = logger;
     }
 
@@ -126,5 +129,36 @@ public class McpToolFunctions
     {
         _logger.LogInformation("MCP tool invoked: assign_issue");
         return await _gitHubTool.AssignIssueAsync(repo, int.Parse(issueNumber), assignees);
+    }
+
+    [Function("mcp_search_knowledge")]
+    public async Task<string> SearchKnowledge(
+        [McpToolTrigger("search_knowledge_base", "Search the knowledge base for documentation, runbooks, ADRs, and Terraform docs using hybrid search")] ToolInvocationContext context,
+        [McpToolProperty("query", "Search query", isRequired: true)] string query,
+        [McpToolProperty("sourceType", "Filter by source type: github_repo or blob_storage")] string? sourceType,
+        [McpToolProperty("sourceName", "Filter by source name (repo name or blob path)")] string? sourceName,
+        [McpToolProperty("maxResults", "Maximum results (default 5)")] string? maxResults)
+    {
+        _logger.LogInformation("MCP tool invoked: search_knowledge_base");
+        var max = int.TryParse(maxResults, out var m) ? m : 5;
+        return await _knowledgeTool.SearchKnowledgeBaseAsync(query, sourceType, sourceName, max);
+    }
+
+    [Function("mcp_list_knowledge_sources")]
+    public async Task<string> ListKnowledgeSources(
+        [McpToolTrigger("list_knowledge_sources", "List all indexed knowledge sources")] ToolInvocationContext context)
+    {
+        _logger.LogInformation("MCP tool invoked: list_knowledge_sources");
+        return await _knowledgeTool.ListKnowledgeSourcesAsync();
+    }
+
+    [Function("mcp_trigger_reindex")]
+    public async Task<string> TriggerKnowledgeReindex(
+        [McpToolTrigger("trigger_reindex", "Trigger a reindex of knowledge sources")] ToolInvocationContext context,
+        [McpToolProperty("sourceType", "Source type to reindex: github_repo, blob_storage, or all", isRequired: true)] string sourceType,
+        [McpToolProperty("sourceName", "Specific source name or 'all'")] string? sourceName)
+    {
+        _logger.LogInformation("MCP tool invoked: trigger_reindex");
+        return await _knowledgeTool.TriggerReindexAsync(sourceType, sourceName);
     }
 }
