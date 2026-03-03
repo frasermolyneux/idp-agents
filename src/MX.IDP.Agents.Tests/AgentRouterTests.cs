@@ -157,6 +157,19 @@ public class AgentRouterTests
         Assert.Contains("KnowledgeBot", result.SystemPrompt);
     }
 
+    [Fact]
+    [Trait("Category", "Unit")]
+    public async Task RouteAsync_CampaignBot_ReturnsCampaignBotRouting()
+    {
+        SetupTriageResponse("CampaignBot");
+
+        var result = await _sut.RouteAsync("Create a campaign to fix security issues");
+
+        Assert.Equal("CampaignBot", result.AgentName);
+        Assert.Contains("Campaign", result.ToolPlugins);
+        Assert.Contains("CampaignBot", result.SystemPrompt);
+    }
+
     private void SetupTriageResponse(string agentName)
     {
         _mockChatCompletion

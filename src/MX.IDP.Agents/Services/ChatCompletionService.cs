@@ -28,6 +28,7 @@ public class ChatCompletionService : IIdpChatService
         PolicyTool policyTool,
         GitHubTool gitHubTool,
         KnowledgeTool knowledgeTool,
+        CampaignTool campaignTool,
         TelemetryClient? telemetryClient = null)
     {
         _kernel = kernel;
@@ -44,6 +45,7 @@ public class ChatCompletionService : IIdpChatService
             _kernel.Plugins.AddFromObject(policyTool, "AzurePolicy");
             _kernel.Plugins.AddFromObject(gitHubTool, "GitHub");
             _kernel.Plugins.AddFromObject(knowledgeTool, "Knowledge");
+            _kernel.Plugins.AddFromObject(campaignTool, "Campaign");
             _pluginsRegistered = true;
         }
     }

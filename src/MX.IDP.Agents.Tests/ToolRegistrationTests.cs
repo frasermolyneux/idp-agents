@@ -129,6 +129,7 @@ public class ToolRegistrationTests
         var policyTool = new PolicyTool(armClient);
         var gitHubTool = new GitHubTool(Moq.Mock.Of<MX.IDP.Agents.Services.IGitHubClientFactory>());
         var knowledgeTool = new KnowledgeTool(Moq.Mock.Of<MX.IDP.Agents.Services.IKnowledgeIndexService>());
+        var campaignTool = new CampaignTool(Moq.Mock.Of<MX.IDP.Agents.Services.ICampaignService>(), Moq.Mock.Of<MX.IDP.Agents.Services.ICampaignOrchestrationService>());
 
         // These should not throw — verifies SK function metadata is valid
         kernel.Plugins.AddFromObject(subscriptionTool, "AzureSubscriptions");
@@ -137,8 +138,9 @@ public class ToolRegistrationTests
         kernel.Plugins.AddFromObject(policyTool, "AzurePolicy");
         kernel.Plugins.AddFromObject(gitHubTool, "GitHub");
         kernel.Plugins.AddFromObject(knowledgeTool, "Knowledge");
+        kernel.Plugins.AddFromObject(campaignTool, "Campaign");
 
-        Assert.Equal(6, kernel.Plugins.Count);
+        Assert.Equal(7, kernel.Plugins.Count);
     }
 
     [Theory]
@@ -166,6 +168,22 @@ public class ToolRegistrationTests
     public void KnowledgeTool_HasKernelFunctions(string methodName, string functionName)
     {
         var method = typeof(KnowledgeTool).GetMethod(methodName);
+        Assert.NotNull(method);
+
+        var attr = method!.GetCustomAttribute<KernelFunctionAttribute>();
+        Assert.NotNull(attr);
+        Assert.Equal(functionName, attr!.Name);
+    }
+
+    [Theory]
+    [Trait("Category", "Unit")]
+    [InlineData("CreateCampaignAsync", "create_campaign")]
+    [InlineData("ListCampaignsAsync", "list_campaigns")]
+    [InlineData("RunCampaignAsync", "run_campaign")]
+    [InlineData("GetCampaignFindingsAsync", "get_campaign_findings")]
+    public void CampaignTool_HasKernelFunctions(string methodName, string functionName)
+    {
+        var method = typeof(CampaignTool).GetMethod(methodName);
         Assert.NotNull(method);
 
         var attr = method!.GetCustomAttribute<KernelFunctionAttribute>();

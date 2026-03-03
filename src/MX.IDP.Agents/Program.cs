@@ -3,6 +3,7 @@ using Azure.ResourceManager;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,7 @@ using Microsoft.Identity.Web;
 using Microsoft.SemanticKernel;
 
 using MX.IDP.Agents.Services;
+using MX.IDP.Agents.Services.CampaignSources;
 using MX.IDP.Agents.Tools;
 
 var builder = FunctionsApplication.CreateBuilder(args);
@@ -72,6 +74,24 @@ builder.Services.AddSingleton<IGitHubClientFactory, GitHubClientFactory>();
 builder.Services.AddSingleton<GitHubTool>();
 builder.Services.AddSingleton<KnowledgeTool>();
 builder.Services.AddSingleton<IKnowledgeIndexService, KnowledgeIndexService>();
+
+// Cosmos DB client for campaigns
+var cosmosEndpoint = builder.Configuration["CosmosDb:Endpoint"]
+                     ?? builder.Configuration["CosmosDb__Endpoint"];
+if (!string.IsNullOrEmpty(cosmosEndpoint))
+{
+    builder.Services.AddSingleton(new CosmosClient(cosmosEndpoint, credential));
+}
+
+// Campaign services
+builder.Services.AddSingleton<ICampaignService, CampaignService>();
+builder.Services.AddSingleton<IResourceRepoMapper, ResourceRepoMapper>();
+builder.Services.AddSingleton<ICampaignDataSource, AdvisorCampaignSource>();
+builder.Services.AddSingleton<ICampaignDataSource, PolicyCampaignSource>();
+builder.Services.AddSingleton<ICampaignDataSource, DevStandardsCampaignSource>();
+builder.Services.AddSingleton<ICampaignDataSource, RepoConfigCampaignSource>();
+builder.Services.AddSingleton<ICampaignOrchestrationService, CampaignOrchestrationService>();
+builder.Services.AddSingleton<CampaignTool>();
 
 // Register agent router and IDP chat service
 builder.Services.AddScoped<IAgentRouter, AgentRouter>();
