@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.Json;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +9,10 @@ using MX.IDP.Agents.Services;
 
 namespace MX.IDP.Agents.Functions;
 
+/// <summary>
+/// HTTP trigger for manual reindex and timer trigger for scheduled GitHub docs indexing.
+/// Separated from blob trigger to avoid startup failures cascading.
+/// </summary>
 public class KnowledgeIndexerFunctions
 {
     private static readonly string[] TextExtensions = [".md", ".txt", ".json", ".yaml", ".yml"];
@@ -64,30 +67,6 @@ public class KnowledgeIndexerFunctions
     }
 
     /// <summary>
-    /// Blob trigger — indexes documents uploaded to the knowledge-docs container.
-    /// </summary>
-    [Function("IndexBlobDocument")]
-    public async Task IndexBlobDocument(
-        [BlobTrigger("knowledge-docs/{blobpath}", Connection = "KnowledgeStorage")] string content,
-        string blobpath)
-    {
-        var fileName = Path.GetFileName(blobpath);
-        if (!IsTextFile(fileName))
-        {
-            _logger.LogInformation("Skipping non-text file: {Path}", blobpath);
-            return;
-        }
-
-        _logger.LogInformation("Indexing blob document: {Path}", blobpath);
-        await _indexService.EnsureIndexExistsAsync();
-        // Use full blob path (including subdirectories) as the source path
-        var folder = Path.GetDirectoryName(blobpath)?.Replace('\\', '/') ?? "knowledge-docs";
-        if (string.IsNullOrEmpty(folder)) folder = "knowledge-docs";
-        await _indexService.IndexDocumentAsync(content, fileName, "blob_storage", folder, blobpath);
-        _logger.LogInformation("Successfully indexed blob document: {Path}", blobpath);
-    }
-
-    /// <summary>
     /// HTTP trigger — manual reindex endpoint.
     /// POST /api/knowledge/reindex?sourceType=github_repo|blob_storage|all
     /// </summary>
@@ -136,8 +115,9 @@ public class KnowledgeIndexerFunctions
         return new OkObjectResult(result);
     }
 
-    private async Task<int> IndexGitHubDirectoryAsync(
-        Octokit.IGitHubClient client, string owner, string repo, string path, string branch)
+    internal static async Task<int> IndexGitHubDirectoryAsync(
+        Octokit.IGitHubClient client, string owner, string repo, string path, string branch,
+        IKnowledgeIndexService indexService, ILogger logger)
     {
         var indexed = 0;
 
@@ -153,17 +133,17 @@ public class KnowledgeIndexerFunctions
                     {
                         var rawContent = await client.Repository.Content.GetRawContentByRef(owner, repo, item.Path, branch);
                         var text = Encoding.UTF8.GetString(rawContent);
-                        await _indexService.IndexDocumentAsync(text, item.Name, "github_repo", repo, item.Path);
+                        await indexService.IndexDocumentAsync(text, item.Name, "github_repo", repo, item.Path);
                         indexed++;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to index file {Repo}/{Path}", repo, item.Path);
+                        logger.LogWarning(ex, "Failed to index file {Repo}/{Path}", repo, item.Path);
                     }
                 }
                 else if (item.Type == Octokit.ContentType.Dir)
                 {
-                    indexed += await IndexGitHubDirectoryAsync(client, owner, repo, item.Path, branch);
+                    indexed += await IndexGitHubDirectoryAsync(client, owner, repo, item.Path, branch, indexService, logger);
                 }
             }
         }
@@ -175,6 +155,12 @@ public class KnowledgeIndexerFunctions
         return indexed;
     }
 
-    private static bool IsTextFile(string fileName) =>
+    private async Task<int> IndexGitHubDirectoryAsync(
+        Octokit.IGitHubClient client, string owner, string repo, string path, string branch)
+    {
+        return await IndexGitHubDirectoryAsync(client, owner, repo, path, branch, _indexService, _logger);
+    }
+
+    internal static bool IsTextFile(string fileName) =>
         TextExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
 }
