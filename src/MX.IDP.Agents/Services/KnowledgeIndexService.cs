@@ -121,6 +121,7 @@ public class KnowledgeIndexService : IKnowledgeIndexService
 
     public async Task<string> SearchAsync(string query, string? sourceType = null, string? sourceName = null, int maxResults = 5)
     {
+        await EnsureIndexExistsAsync();
         var embedding = await GenerateEmbeddingAsync(query);
 
         var searchOptions = new SearchOptions
@@ -163,6 +164,7 @@ public class KnowledgeIndexService : IKnowledgeIndexService
 
     public async Task<string> ListSourcesAsync()
     {
+        await EnsureIndexExistsAsync();
         var searchOptions = new SearchOptions
         {
             Size = 0,
@@ -186,6 +188,7 @@ public class KnowledgeIndexService : IKnowledgeIndexService
 
     public async Task DeleteSourceAsync(string sourceType, string sourceName)
     {
+        await EnsureIndexExistsAsync();
         var searchOptions = new SearchOptions
         {
             Size = 1000,
