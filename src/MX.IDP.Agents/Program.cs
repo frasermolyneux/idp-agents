@@ -2,6 +2,7 @@ using Azure.Identity;
 using Azure.ResourceManager;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
+using Azure.Storage.Blobs;
 
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker;
@@ -78,6 +79,17 @@ builder.Services.AddSingleton<IGitHubClientFactory, GitHubClientFactory>();
 builder.Services.AddSingleton<GitHubTool>();
 builder.Services.AddSingleton<KnowledgeTool>();
 builder.Services.AddSingleton<IKnowledgeIndexService, KnowledgeIndexService>();
+
+// Blob storage client for knowledge docs reindex
+var knowledgeStorageConn = builder.Configuration["KnowledgeStorage"]
+                           ?? builder.Configuration["KnowledgeStorage__blobServiceUri"];
+if (!string.IsNullOrEmpty(knowledgeStorageConn))
+{
+    if (knowledgeStorageConn.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+        builder.Services.AddSingleton(new BlobServiceClient(new Uri(knowledgeStorageConn), credential));
+    else
+        builder.Services.AddSingleton(new BlobServiceClient(knowledgeStorageConn));
+}
 
 // Cosmos DB client for campaigns
 var cosmosEndpoint = builder.Configuration["CosmosDb:Endpoint"]

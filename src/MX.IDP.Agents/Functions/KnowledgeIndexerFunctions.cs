@@ -1,5 +1,7 @@
 using System.Text;
 
+using Azure.Storage.Blobs;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -19,15 +21,18 @@ public class KnowledgeIndexerFunctions
 
     private readonly IKnowledgeIndexService _indexService;
     private readonly IGitHubClientFactory _gitHubClientFactory;
+    private readonly BlobServiceClient? _blobServiceClient;
     private readonly ILogger<KnowledgeIndexerFunctions> _logger;
 
     public KnowledgeIndexerFunctions(
         IKnowledgeIndexService indexService,
         IGitHubClientFactory gitHubClientFactory,
-        ILogger<KnowledgeIndexerFunctions> logger)
+        ILogger<KnowledgeIndexerFunctions> logger,
+        BlobServiceClient? blobServiceClient = null)
     {
         _indexService = indexService;
         _gitHubClientFactory = gitHubClientFactory;
+        _blobServiceClient = blobServiceClient;
         _logger = logger;
     }
 
@@ -120,9 +125,43 @@ public class KnowledgeIndexerFunctions
 
         if (sourceType is "blob_storage" or "all")
         {
-            // For blob storage, we just clear the index — blobs will re-trigger on next upload
             await _indexService.DeleteSourceAsync("blob_storage", "all");
-            result = result with { message = result.message + " | Blob storage index cleared (re-upload docs to re-index)" };
+
+            var blobCount = 0;
+            if (_blobServiceClient is not null)
+            {
+                try
+                {
+                    var container = _blobServiceClient.GetBlobContainerClient("knowledge-docs");
+                    await foreach (var blob in container.GetBlobsAsync())
+                    {
+                        var fileName = Path.GetFileName(blob.Name);
+                        if (!IsTextFile(fileName)) continue;
+
+                        try
+                        {
+                            var blobClient = container.GetBlobClient(blob.Name);
+                            var download = await blobClient.DownloadContentAsync();
+                            var content = download.Value.Content.ToString();
+
+                            var folder = Path.GetDirectoryName(blob.Name)?.Replace('\\', '/') ?? "knowledge-docs";
+                            if (string.IsNullOrEmpty(folder)) folder = "knowledge-docs";
+                            await _indexService.IndexDocumentAsync(content, fileName, "blob_storage", folder, blob.Name);
+                            blobCount++;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to reindex blob {Blob}", blob.Name);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to enumerate blob container for reindex");
+                }
+            }
+
+            result = result with { message = result.message + $" | Reindexed {blobCount} blob storage files", indexed = result.indexed + blobCount };
         }
 
         return new OkObjectResult(result);
