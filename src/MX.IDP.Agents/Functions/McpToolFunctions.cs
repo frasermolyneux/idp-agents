@@ -307,4 +307,42 @@ public class McpToolFunctions
         _logger.LogInformation("MCP tool invoked: add_label");
         return await _gitHubTool.AddLabelAsync(repo, int.Parse(issueNumber), labels);
     }
+
+    // Campaign lifecycle tools
+
+    [Function("mcp_preview_campaign")]
+    public async Task<string> PreviewCampaign(
+        [McpToolTrigger("preview_campaign", "Dry-run a campaign — scans for findings without creating issues")] ToolInvocationContext context,
+        [McpToolProperty("campaignId", "Campaign ID to preview", isRequired: true)] string campaignId)
+    {
+        _logger.LogInformation("MCP tool invoked: preview_campaign");
+        return await _campaignTool.PreviewCampaignAsync(campaignId);
+    }
+
+    [Function("mcp_pause_campaign")]
+    public async Task<string> PauseCampaign(
+        [McpToolTrigger("pause_campaign", "Pause a running campaign")] ToolInvocationContext context,
+        [McpToolProperty("campaignId", "Campaign ID to pause", isRequired: true)] string campaignId)
+    {
+        _logger.LogInformation("MCP tool invoked: pause_campaign");
+        return await _campaignTool.PauseCampaignAsync(campaignId);
+    }
+
+    [Function("mcp_resume_campaign")]
+    public async Task<string> ResumeCampaign(
+        [McpToolTrigger("resume_campaign", "Resume a paused campaign")] ToolInvocationContext context,
+        [McpToolProperty("campaignId", "Campaign ID to resume", isRequired: true)] string campaignId)
+    {
+        _logger.LogInformation("MCP tool invoked: resume_campaign");
+        return await _campaignTool.ResumeCampaignAsync(campaignId);
+    }
+
+    [Function("mcp_cancel_campaign")]
+    public async Task<string> CancelCampaign(
+        [McpToolTrigger("cancel_campaign", "Cancel a campaign — cannot be resumed")] ToolInvocationContext context,
+        [McpToolProperty("campaignId", "Campaign ID to cancel", isRequired: true)] string campaignId)
+    {
+        _logger.LogInformation("MCP tool invoked: cancel_campaign");
+        return await _campaignTool.CancelCampaignAsync(campaignId);
+    }
 }

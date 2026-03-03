@@ -136,7 +136,11 @@ public class AgentRouter : IAgentRouter
                 You have access to campaign tools:
                 - create_campaign: Create a new campaign with a source type and optional KQL query.
                 - list_campaigns: List all campaigns with their status and progress.
-                - run_campaign: Trigger a campaign run — scans for findings, deduplicates, creates GitHub issues, assigns, and tracks progress.
+                - preview_campaign: Dry-run a campaign — scans for findings without creating GitHub issues. Great for seeing what will happen before committing.
+                - run_campaign: Trigger a full campaign run — scans, deduplicates, creates issues, tracks progress.
+                - pause_campaign: Pause a running or created campaign.
+                - resume_campaign: Resume a paused campaign.
+                - cancel_campaign: Cancel a campaign permanently.
                 - get_campaign_findings: Get detailed findings for a specific campaign.
                 - list_campaign_templates: List pre-built campaign templates for common scenarios.
                 - create_campaign_from_template: Create a campaign from a template (e.g., security-hardening, cost-optimisation).

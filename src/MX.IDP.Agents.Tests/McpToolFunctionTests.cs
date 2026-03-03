@@ -38,6 +38,10 @@ public class McpToolFunctionTests
     [InlineData("mcp_get_repo_stats", "GetRepoStats")]
     [InlineData("mcp_close_or_reopen_issue", "CloseOrReopenIssue")]
     [InlineData("mcp_add_label", "AddLabel")]
+    [InlineData("mcp_preview_campaign", "PreviewCampaign")]
+    [InlineData("mcp_pause_campaign", "PauseCampaign")]
+    [InlineData("mcp_resume_campaign", "ResumeCampaign")]
+    [InlineData("mcp_cancel_campaign", "CancelCampaign")]
     public void McpToolFunction_HasFunctionAttribute(string functionName, string methodName)
     {
         var method = typeof(McpToolFunctions).GetMethod(methodName);
@@ -75,6 +79,10 @@ public class McpToolFunctionTests
     [InlineData("GetRepoStats", "get_repo_stats")]
     [InlineData("CloseOrReopenIssue", "close_or_reopen_issue")]
     [InlineData("AddLabel", "add_label")]
+    [InlineData("PreviewCampaign", "preview_campaign")]
+    [InlineData("PauseCampaign", "pause_campaign")]
+    [InlineData("ResumeCampaign", "resume_campaign")]
+    [InlineData("CancelCampaign", "cancel_campaign")]
     public void McpToolFunction_HasMcpToolTrigger(string methodName, string toolName)
     {
         var method = typeof(McpToolFunctions).GetMethod(methodName);
@@ -98,7 +106,7 @@ public class McpToolFunctionTests
             .Where(m => m.GetCustomAttribute<FunctionAttribute>() is not null)
             .ToList();
 
-        Assert.Equal(25, methods.Count);
+        Assert.Equal(29, methods.Count);
     }
 
     [Fact]

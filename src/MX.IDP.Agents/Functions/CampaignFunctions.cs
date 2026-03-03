@@ -79,13 +79,14 @@ public class CampaignFunctions
         string campaignId)
     {
         var userId = req.Query["userId"].FirstOrDefault() ?? "system";
+        var dryRun = req.Query["dryRun"].FirstOrDefault()?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
         var campaign = await _campaignService.GetAsync(campaignId, userId);
         if (campaign is null) return new NotFoundResult();
 
         if (campaign.Status == "running")
             return new ConflictObjectResult("Campaign is already running");
 
-        var result = await _orchestrationService.RunCampaignAsync(campaign);
+        var result = await _orchestrationService.RunCampaignAsync(campaign, dryRun);
         return new OkObjectResult(result);
     }
 
@@ -117,6 +118,24 @@ public class CampaignFunctions
 
         var result = await _orchestrationService.RunCampaignAsync(campaign);
         return new OkObjectResult(result);
+    }
+
+    [Function("CancelCampaign")]
+    public async Task<IActionResult> CancelCampaign(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "campaigns/{campaignId}/cancel")] HttpRequest req,
+        string campaignId)
+    {
+        var userId = req.Query["userId"].FirstOrDefault() ?? "system";
+        var campaign = await _campaignService.GetAsync(campaignId, userId);
+        if (campaign is null) return new NotFoundResult();
+
+        if (campaign.Status is not ("running" or "paused" or "created"))
+            return new ConflictObjectResult($"Campaign cannot be cancelled (status: {campaign.Status})");
+
+        campaign.Status = "cancelled";
+        await _campaignService.UpdateAsync(campaign);
+        _logger.LogInformation("Cancelled campaign {CampaignId}", campaignId);
+        return new OkObjectResult(campaign);
     }
 
     [Function("DeleteCampaign")]

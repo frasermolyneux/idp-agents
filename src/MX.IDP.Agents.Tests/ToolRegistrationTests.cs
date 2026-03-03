@@ -190,6 +190,10 @@ public class ToolRegistrationTests
     [InlineData("GetCampaignFindingsAsync", "get_campaign_findings")]
     [InlineData("ListCampaignTemplatesAsync", "list_campaign_templates")]
     [InlineData("CreateCampaignFromTemplateAsync", "create_campaign_from_template")]
+    [InlineData("PreviewCampaignAsync", "preview_campaign")]
+    [InlineData("PauseCampaignAsync", "pause_campaign")]
+    [InlineData("ResumeCampaignAsync", "resume_campaign")]
+    [InlineData("CancelCampaignAsync", "cancel_campaign")]
     public void CampaignTool_HasKernelFunctions(string methodName, string functionName)
     {
         var method = typeof(CampaignTool).GetMethod(methodName);

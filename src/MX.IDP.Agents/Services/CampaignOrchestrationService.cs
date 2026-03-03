@@ -7,7 +7,7 @@ namespace MX.IDP.Agents.Services;
 
 public interface ICampaignOrchestrationService
 {
-    Task<Campaign> RunCampaignAsync(Campaign campaign);
+    Task<Campaign> RunCampaignAsync(Campaign campaign, bool dryRun = false);
 }
 
 public class CampaignOrchestrationService : ICampaignOrchestrationService
@@ -29,9 +29,9 @@ public class CampaignOrchestrationService : ICampaignOrchestrationService
         _logger = logger;
     }
 
-    public async Task<Campaign> RunCampaignAsync(Campaign campaign)
+    public async Task<Campaign> RunCampaignAsync(Campaign campaign, bool dryRun = false)
     {
-        campaign.Status = "running";
+        campaign.Status = dryRun ? "previewing" : "running";
         campaign.LastRunAt = DateTimeOffset.UtcNow;
         await _campaignService.UpdateAsync(campaign);
 
@@ -80,6 +80,12 @@ public class CampaignOrchestrationService : ICampaignOrchestrationService
                         continue;
                     }
 
+                    if (dryRun)
+                    {
+                        finding.Status = "preview";
+                        continue;
+                    }
+
                     // 5. Create GitHub issue
                     try
                     {
@@ -112,9 +118,24 @@ public class CampaignOrchestrationService : ICampaignOrchestrationService
             await _campaignService.UpsertFindingsBatchAsync(newFindings);
 
             // 8. Refresh progress from all existing + new issues
-            await UpdateCampaignProgressAsync(campaign, client);
+            if (!dryRun)
+            {
+                await UpdateCampaignProgressAsync(campaign, client);
+            }
+            else
+            {
+                campaign.Stats = new CampaignStats
+                {
+                    TotalFindings = newFindings.Count,
+                    IssuesCreated = 0,
+                    IssuesOpen = 0,
+                    IssuesClosed = 0,
+                    IssuesSkipped = newFindings.Count(f => f.Status is "skipped" or "duplicate"),
+                    ProgressPercent = 0
+                };
+            }
 
-            campaign.Status = "completed";
+            campaign.Status = dryRun ? "created" : "completed";
             await _campaignService.UpdateAsync(campaign);
 
             _logger.LogInformation("Campaign '{Name}' completed. {New} new findings, {Total} total",

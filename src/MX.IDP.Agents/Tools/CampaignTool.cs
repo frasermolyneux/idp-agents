@@ -131,4 +131,70 @@ public class CampaignTool
         var created = await _campaignService.CreateAsync(campaign);
         return JsonSerializer.Serialize(new { id = created.Id, name = created.Name, status = created.Status, sourceType = created.SourceType, template = templateId });
     }
+
+    [KernelFunction("preview_campaign")]
+    [Description("Dry-run a campaign — scans for findings without creating GitHub issues. Use to preview what a campaign would do before running it for real.")]
+    public async Task<string> PreviewCampaignAsync(
+        [Description("Campaign ID to preview")] string campaignId)
+    {
+        var campaign = await _campaignService.GetAsync(campaignId, "system");
+        if (campaign is null) return "Campaign not found";
+
+        var result = await _orchestrationService.RunCampaignAsync(campaign, dryRun: true);
+        var findings = await _campaignService.GetFindingsAsync(campaignId, "preview");
+        var summary = findings.Select(f => new { f.Title, f.Severity, f.Repo });
+        return JsonSerializer.Serialize(new
+        {
+            result.Id, result.Name, result.Status, previewFindings = findings.Count,
+            findings = summary
+        }, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    [KernelFunction("pause_campaign")]
+    [Description("Pause a running campaign. It can be resumed later.")]
+    public async Task<string> PauseCampaignAsync(
+        [Description("Campaign ID to pause")] string campaignId)
+    {
+        var campaign = await _campaignService.GetAsync(campaignId, "system");
+        if (campaign is null) return "Campaign not found";
+        if (campaign.Status is not ("running" or "created"))
+            return $"Campaign cannot be paused (status: {campaign.Status})";
+
+        campaign.Status = "paused";
+        await _campaignService.UpdateAsync(campaign);
+        return JsonSerializer.Serialize(new { campaign.Id, campaign.Name, campaign.Status });
+    }
+
+    [KernelFunction("resume_campaign")]
+    [Description("Resume a paused campaign. Continues scanning and issue creation.")]
+    public async Task<string> ResumeCampaignAsync(
+        [Description("Campaign ID to resume")] string campaignId)
+    {
+        var campaign = await _campaignService.GetAsync(campaignId, "system");
+        if (campaign is null) return "Campaign not found";
+        if (campaign.Status != "paused")
+            return $"Campaign is not paused (status: {campaign.Status})";
+
+        var result = await _orchestrationService.RunCampaignAsync(campaign);
+        return JsonSerializer.Serialize(new
+        {
+            result.Id, result.Name, result.Status,
+            result.Stats.TotalFindings, result.Stats.IssuesCreated, result.Stats.ProgressPercent
+        });
+    }
+
+    [KernelFunction("cancel_campaign")]
+    [Description("Cancel a campaign. Cannot be resumed after cancellation.")]
+    public async Task<string> CancelCampaignAsync(
+        [Description("Campaign ID to cancel")] string campaignId)
+    {
+        var campaign = await _campaignService.GetAsync(campaignId, "system");
+        if (campaign is null) return "Campaign not found";
+        if (campaign.Status is not ("running" or "paused" or "created"))
+            return $"Campaign cannot be cancelled (status: {campaign.Status})";
+
+        campaign.Status = "cancelled";
+        await _campaignService.UpdateAsync(campaign);
+        return JsonSerializer.Serialize(new { campaign.Id, campaign.Name, campaign.Status });
+    }
 }
