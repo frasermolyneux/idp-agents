@@ -68,19 +68,23 @@ public class KnowledgeIndexerFunctions
     /// </summary>
     [Function("IndexBlobDocument")]
     public async Task IndexBlobDocument(
-        [BlobTrigger("knowledge-docs/{name}", Connection = "KnowledgeStorage")] string content,
-        string name)
+        [BlobTrigger("knowledge-docs/{blobpath}", Connection = "KnowledgeStorage")] string content,
+        string blobpath)
     {
-        if (!IsTextFile(name))
+        var fileName = Path.GetFileName(blobpath);
+        if (!IsTextFile(fileName))
         {
-            _logger.LogInformation("Skipping non-text file: {Name}", name);
+            _logger.LogInformation("Skipping non-text file: {Path}", blobpath);
             return;
         }
 
-        _logger.LogInformation("Indexing blob document: {Name}", name);
+        _logger.LogInformation("Indexing blob document: {Path}", blobpath);
         await _indexService.EnsureIndexExistsAsync();
-        await _indexService.IndexDocumentAsync(content, name, "blob_storage", "knowledge-docs", name);
-        _logger.LogInformation("Successfully indexed blob document: {Name}", name);
+        // Use full blob path (including subdirectories) as the source path
+        var folder = Path.GetDirectoryName(blobpath)?.Replace('\\', '/') ?? "knowledge-docs";
+        if (string.IsNullOrEmpty(folder)) folder = "knowledge-docs";
+        await _indexService.IndexDocumentAsync(content, fileName, "blob_storage", folder, blobpath);
+        _logger.LogInformation("Successfully indexed blob document: {Path}", blobpath);
     }
 
     /// <summary>
