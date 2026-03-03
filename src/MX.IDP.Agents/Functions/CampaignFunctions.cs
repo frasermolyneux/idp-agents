@@ -57,6 +57,10 @@ public class CampaignFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "campaigns/{campaignId}")] HttpRequest req,
         string campaignId)
     {
+        // Prevent route conflict with /campaigns/templates
+        if (string.Equals(campaignId, "templates", StringComparison.OrdinalIgnoreCase))
+            return ListTemplates(req);
+
         var userId = req.Query["userId"].FirstOrDefault() ?? "system";
         var campaign = await _campaignService.GetAsync(campaignId, userId);
         if (campaign is null) return new NotFoundResult();
