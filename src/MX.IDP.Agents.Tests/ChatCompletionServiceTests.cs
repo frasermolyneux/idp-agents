@@ -37,16 +37,17 @@ public class ChatCompletionServiceTests
             });
 
         var mockArmClient = new Mock<Azure.ResourceManager.ArmClient>(MockBehavior.Loose);
+        var mockArgService = Mock.Of<IResourceGraphService>();
 
         _sut = new ChatCompletionService(
             kernel,
             _mockRouter.Object,
             Mock.Of<ILogger<ChatCompletionService>>(),
             new SubscriptionTool(mockArmClient.Object),
-            new ResourceGraphTool(mockArmClient.Object),
-            new AdvisorTool(mockArmClient.Object),
-            new PolicyTool(mockArmClient.Object),
-            new GitHubTool(Mock.Of<IGitHubClientFactory>()),
+            new ResourceGraphTool(mockArgService),
+            new AdvisorTool(mockArgService),
+            new PolicyTool(mockArgService),
+            new GitHubTool(Mock.Of<IGitHubClientFactory>(), Mock.Of<IGitHubQueryService>()),
             new KnowledgeTool(Mock.Of<IKnowledgeIndexService>()),
             new CampaignTool(Mock.Of<ICampaignService>(), Mock.Of<ICampaignOrchestrationService>()));
     }

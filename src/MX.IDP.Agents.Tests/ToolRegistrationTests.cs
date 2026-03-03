@@ -121,13 +121,14 @@ public class ToolRegistrationTests
     public void AllTools_CanBeRegisteredAsKernelPlugins()
     {
         var kernel = Kernel.CreateBuilder().Build();
+        var argService = Moq.Mock.Of<MX.IDP.Agents.Services.IResourceGraphService>();
         var armClient = new Azure.ResourceManager.ArmClient(new Azure.Identity.DefaultAzureCredential());
 
         var subscriptionTool = new SubscriptionTool(armClient);
-        var resourceGraphTool = new ResourceGraphTool(armClient);
-        var advisorTool = new AdvisorTool(armClient);
-        var policyTool = new PolicyTool(armClient);
-        var gitHubTool = new GitHubTool(Moq.Mock.Of<MX.IDP.Agents.Services.IGitHubClientFactory>());
+        var resourceGraphTool = new ResourceGraphTool(argService);
+        var advisorTool = new AdvisorTool(argService);
+        var policyTool = new PolicyTool(argService);
+        var gitHubTool = new GitHubTool(Moq.Mock.Of<MX.IDP.Agents.Services.IGitHubClientFactory>(), Moq.Mock.Of<MX.IDP.Agents.Services.IGitHubQueryService>());
         var knowledgeTool = new KnowledgeTool(Moq.Mock.Of<MX.IDP.Agents.Services.IKnowledgeIndexService>());
         var campaignTool = new CampaignTool(Moq.Mock.Of<MX.IDP.Agents.Services.ICampaignService>(), Moq.Mock.Of<MX.IDP.Agents.Services.ICampaignOrchestrationService>());
 
@@ -150,6 +151,12 @@ public class ToolRegistrationTests
     [InlineData("ListRepositoriesAsync", "list_repositories")]
     [InlineData("GetActionsStatusAsync", "get_actions_status")]
     [InlineData("AssignIssueAsync", "assign_issue")]
+    [InlineData("GetPullRequestsAsync", "get_pull_requests")]
+    [InlineData("GetWorkflowFailuresAsync", "get_workflow_failures")]
+    [InlineData("SearchCodeAsync", "search_code")]
+    [InlineData("GetRepoStatsAsync", "get_repo_stats")]
+    [InlineData("CloseOrReopenIssueAsync", "close_or_reopen_issue")]
+    [InlineData("AddLabelAsync", "add_label")]
     public void GitHubTool_HasKernelFunctions(string methodName, string functionName)
     {
         var method = typeof(GitHubTool).GetMethod(methodName);

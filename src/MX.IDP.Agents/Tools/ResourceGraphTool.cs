@@ -1,23 +1,21 @@
 using System.ComponentModel;
 using System.Text.Json;
 
-using Azure.ResourceManager;
-using Azure.ResourceManager.ResourceGraph;
-using Azure.ResourceManager.ResourceGraph.Models;
-
 using Microsoft.ApplicationInsights;
 using Microsoft.SemanticKernel;
+
+using MX.IDP.Agents.Services;
 
 namespace MX.IDP.Agents.Tools;
 
 public class ResourceGraphTool
 {
-    private readonly ArmClient _armClient;
+    private readonly IResourceGraphService _argService;
     private readonly TelemetryClient? _telemetryClient;
 
-    public ResourceGraphTool(ArmClient armClient, TelemetryClient? telemetryClient = null)
+    public ResourceGraphTool(IResourceGraphService argService, TelemetryClient? telemetryClient = null)
     {
-        _armClient = armClient;
+        _argService = argService;
         _telemetryClient = telemetryClient;
     }
 
@@ -33,33 +31,13 @@ public class ResourceGraphTool
             ["Query"] = query.Length > 200 ? query[..200] : query
         });
 
-        var tenant = _armClient.GetTenants().First();
-
-        var content = new ResourceQueryContent(query);
-
-        if (!string.IsNullOrEmpty(subscriptionIds))
-        {
-            foreach (var subId in subscriptionIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            {
-                content.Subscriptions.Add(subId);
-            }
-        }
-        else
-        {
-            await foreach (var sub in _armClient.GetSubscriptions().GetAllAsync())
-            {
-                content.Subscriptions.Add(sub.Data.SubscriptionId);
-            }
-        }
-
-        var response = await tenant.GetResourcesAsync(content);
-        var result = response.Value;
+        var result = await _argService.QueryAsync(query, subscriptionIds);
 
         return JsonSerializer.Serialize(new
         {
             totalRecords = result.TotalRecords,
             count = result.Count,
-            data = result.Data.ToString()
+            data = result.Data
         }, new JsonSerializerOptions { WriteIndented = true });
     }
 }

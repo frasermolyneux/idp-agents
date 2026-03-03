@@ -8,88 +8,71 @@ public class RepoConfigCampaignSource : ICampaignDataSource
 {
     public string SourceType => "repo_config";
 
-    private readonly IGitHubClientFactory _gitHubClientFactory;
+    private readonly IGitHubQueryService _ghService;
     private readonly ILogger<RepoConfigCampaignSource> _logger;
 
-    public RepoConfigCampaignSource(IGitHubClientFactory gitHubClientFactory, ILogger<RepoConfigCampaignSource> logger)
+    public RepoConfigCampaignSource(IGitHubQueryService ghService, ILogger<RepoConfigCampaignSource> logger)
     {
-        _gitHubClientFactory = gitHubClientFactory;
+        _ghService = ghService;
         _logger = logger;
     }
 
     public async Task<List<CampaignFinding>> ScanAsync(CampaignFilter? filter)
     {
+        var configs = await _ghService.GetRepoConfigStatusAsync(filter?.Repos);
         var findings = new List<CampaignFinding>();
-        var client = await _gitHubClientFactory.CreateClientAsync();
-        var repos = await client.GitHubApps.Installation.GetAllRepositoriesForCurrent();
 
-        foreach (var repo in repos.Repositories)
+        foreach (var cfg in configs)
         {
-            if (repo.Archived) continue;
-            if (filter?.Repos is not null && !filter.Repos.Contains(repo.Name, StringComparer.OrdinalIgnoreCase))
-                continue;
-
-            // Check description
-            if (string.IsNullOrWhiteSpace(repo.Description))
+            if (!cfg.HasDescription)
             {
                 findings.Add(new CampaignFinding
                 {
                     SourceType = "repo_config",
-                    Title = $"[RepoConfig] Missing description on {repo.Name}",
-                    Description = $"Repository `{repo.Name}` has no description set. Add a meaningful description for discoverability.",
+                    Title = $"[RepoConfig] Missing description on {cfg.Repo}",
+                    Description = $"Repository `{cfg.Repo}` has no description set. Add a meaningful description for discoverability.",
                     Severity = "Low",
-                    Repo = repo.Name,
-                    DeduplicationKey = $"repoconfig:{repo.Name}:no_description"
+                    Repo = cfg.Repo,
+                    DeduplicationKey = $"repoconfig:{cfg.Repo}:no_description"
                 });
             }
 
-            // Check topics
-            try
-            {
-                var topics = await client.Repository.GetAllTopics(repo.Owner.Login, repo.Name);
-                if (topics.Names.Count == 0)
-                {
-                    findings.Add(new CampaignFinding
-                    {
-                        SourceType = "repo_config",
-                        Title = $"[RepoConfig] No topics on {repo.Name}",
-                        Description = $"Repository `{repo.Name}` has no topics set. Add topics for categorisation and discoverability.",
-                        Severity = "Low",
-                        Repo = repo.Name,
-                        DeduplicationKey = $"repoconfig:{repo.Name}:no_topics"
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to check topics for repo {Repo}", repo.Name);
-            }
-
-            // Check delete branch on merge
-            if (!repo.DeleteBranchOnMerge.GetValueOrDefault())
+            if (!cfg.HasTopics)
             {
                 findings.Add(new CampaignFinding
                 {
                     SourceType = "repo_config",
-                    Title = $"[RepoConfig] Delete branch on merge disabled on {repo.Name}",
-                    Description = $"Repository `{repo.Name}` does not auto-delete branches after merge. Enable this to keep the repository clean.",
+                    Title = $"[RepoConfig] No topics on {cfg.Repo}",
+                    Description = $"Repository `{cfg.Repo}` has no topics set. Add topics for categorisation and discoverability.",
                     Severity = "Low",
-                    Repo = repo.Name,
-                    DeduplicationKey = $"repoconfig:{repo.Name}:no_delete_branch_on_merge"
+                    Repo = cfg.Repo,
+                    DeduplicationKey = $"repoconfig:{cfg.Repo}:no_topics"
                 });
             }
 
-            // Check default branch is 'main'
-            if (repo.DefaultBranch != "main")
+            if (!cfg.DeleteBranchOnMerge)
             {
                 findings.Add(new CampaignFinding
                 {
                     SourceType = "repo_config",
-                    Title = $"[RepoConfig] Non-standard default branch on {repo.Name}",
-                    Description = $"Repository `{repo.Name}` uses `{repo.DefaultBranch}` as default branch instead of `main`.",
+                    Title = $"[RepoConfig] Delete branch on merge disabled on {cfg.Repo}",
+                    Description = $"Repository `{cfg.Repo}` does not auto-delete branches after merge. Enable this to keep the repository clean.",
+                    Severity = "Low",
+                    Repo = cfg.Repo,
+                    DeduplicationKey = $"repoconfig:{cfg.Repo}:no_delete_branch_on_merge"
+                });
+            }
+
+            if (cfg.DefaultBranch != "main")
+            {
+                findings.Add(new CampaignFinding
+                {
+                    SourceType = "repo_config",
+                    Title = $"[RepoConfig] Non-standard default branch on {cfg.Repo}",
+                    Description = $"Repository `{cfg.Repo}` uses `{cfg.DefaultBranch}` as default branch instead of `main`.",
                     Severity = "Medium",
-                    Repo = repo.Name,
-                    DeduplicationKey = $"repoconfig:{repo.Name}:non_standard_default_branch"
+                    Repo = cfg.Repo,
+                    DeduplicationKey = $"repoconfig:{cfg.Repo}:non_standard_default_branch"
                 });
             }
         }

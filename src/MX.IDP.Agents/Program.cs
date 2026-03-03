@@ -65,6 +65,10 @@ if (!string.IsNullOrEmpty(searchEndpoint))
     builder.Services.AddSingleton(new SearchClient(new Uri(searchEndpoint), "knowledge-index", credential));
 }
 
+// Register shared query services
+builder.Services.AddSingleton<IResourceGraphService, ResourceGraphService>();
+builder.Services.AddSingleton<IGitHubQueryService, GitHubQueryService>();
+
 // Register tool classes for DI
 builder.Services.AddSingleton<SubscriptionTool>();
 builder.Services.AddSingleton<ResourceGraphTool>();

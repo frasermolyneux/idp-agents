@@ -1,23 +1,21 @@
 using System.ComponentModel;
 using System.Text.Json;
 
-using Azure.ResourceManager;
-using Azure.ResourceManager.ResourceGraph;
-using Azure.ResourceManager.ResourceGraph.Models;
-
 using Microsoft.ApplicationInsights;
 using Microsoft.SemanticKernel;
+
+using MX.IDP.Agents.Services;
 
 namespace MX.IDP.Agents.Tools;
 
 public class AdvisorTool
 {
-    private readonly ArmClient _armClient;
+    private readonly IResourceGraphService _argService;
     private readonly TelemetryClient? _telemetryClient;
 
-    public AdvisorTool(ArmClient armClient, TelemetryClient? telemetryClient = null)
+    public AdvisorTool(IResourceGraphService argService, TelemetryClient? telemetryClient = null)
     {
-        _armClient = armClient;
+        _argService = argService;
         _telemetryClient = telemetryClient;
     }
 
@@ -35,41 +33,13 @@ public class AdvisorTool
             ["Impact"] = impact ?? "all"
         });
 
-        var filters = new List<string>();
-        if (!string.IsNullOrEmpty(category))
-            filters.Add($"| where properties.category == '{category}'");
-        if (!string.IsNullOrEmpty(impact))
-            filters.Add($"| where properties.impact == '{impact}'");
-
-        var query = $@"
-            AdvisorResources
-            | where type == 'microsoft.advisor/recommendations'
-            {string.Join("\n            ", filters)}
-            | extend category = tostring(properties.category),
-                     impact = tostring(properties.impact),
-                     problem = tostring(properties.shortDescription.problem),
-                     solution = tostring(properties.shortDescription.solution),
-                     impactedField = tostring(properties.impactedField),
-                     impactedValue = tostring(properties.impactedValue)
-            | project subscriptionId, category, impact, problem, solution, impactedField, impactedValue
-            | take {maxResults}";
-
-        var tenant = _armClient.GetTenants().First();
-        var content = new ResourceQueryContent(query);
-
-        await foreach (var sub in _armClient.GetSubscriptions().GetAllAsync())
-        {
-            content.Subscriptions.Add(sub.Data.SubscriptionId);
-        }
-
-        var response = await tenant.GetResourcesAsync(content);
-        var result = response.Value;
+        var result = await _argService.GetAdvisorRecommendationsAsync(category, impact, maxResults);
 
         return JsonSerializer.Serialize(new
         {
             totalRecords = result.TotalRecords,
             count = result.Count,
-            data = result.Data.ToString()
+            data = result.Data
         }, new JsonSerializerOptions { WriteIndented = true });
     }
 }

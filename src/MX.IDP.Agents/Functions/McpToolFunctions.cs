@@ -229,4 +229,82 @@ public class McpToolFunctions
         _logger.LogInformation("MCP tool invoked: create_campaign_from_template");
         return await _campaignTool.CreateCampaignFromTemplateAsync(templateId, name, assignTo);
     }
+
+    // New GitHub tools
+
+    [Function("mcp_list_repositories")]
+    public async Task<string> ListRepositories(
+        [McpToolTrigger("list_repositories", "List repositories accessible to the IDP GitHub App under frasermolyneux")] ToolInvocationContext context,
+        [McpToolProperty("visibility", "Filter by visibility: public, private, all")] string? visibility,
+        [McpToolProperty("maxResults", "Maximum results (default 50)")] string? maxResults)
+    {
+        _logger.LogInformation("MCP tool invoked: list_repositories");
+        var max = int.TryParse(maxResults, out var m) ? m : 50;
+        return await _gitHubTool.ListRepositoriesAsync(visibility, max);
+    }
+
+    [Function("mcp_get_pull_requests")]
+    public async Task<string> GetPullRequests(
+        [McpToolTrigger("get_pull_requests", "List pull requests for a frasermolyneux repository")] ToolInvocationContext context,
+        [McpToolProperty("repo", "Repository name", isRequired: true)] string repo,
+        [McpToolProperty("state", "Filter by state: open, closed, all")] string? state,
+        [McpToolProperty("maxResults", "Maximum results (default 25)")] string? maxResults)
+    {
+        _logger.LogInformation("MCP tool invoked: get_pull_requests");
+        var max = int.TryParse(maxResults, out var m) ? m : 25;
+        return await _gitHubTool.GetPullRequestsAsync(repo, state, max);
+    }
+
+    [Function("mcp_get_workflow_failures")]
+    public async Task<string> GetWorkflowFailures(
+        [McpToolTrigger("get_workflow_failures", "Get recent failed GitHub Actions workflow runs")] ToolInvocationContext context,
+        [McpToolProperty("repo", "Repository name", isRequired: true)] string repo,
+        [McpToolProperty("maxResults", "Maximum results (default 10)")] string? maxResults)
+    {
+        _logger.LogInformation("MCP tool invoked: get_workflow_failures");
+        var max = int.TryParse(maxResults, out var m) ? m : 10;
+        return await _gitHubTool.GetWorkflowFailuresAsync(repo, max);
+    }
+
+    [Function("mcp_search_code")]
+    public async Task<string> SearchCode(
+        [McpToolTrigger("search_code", "Search code across frasermolyneux repositories")] ToolInvocationContext context,
+        [McpToolProperty("query", "Search query", isRequired: true)] string query,
+        [McpToolProperty("repo", "Optional repo name to scope search")] string? repo)
+    {
+        _logger.LogInformation("MCP tool invoked: search_code");
+        return await _gitHubTool.SearchCodeAsync(query, repo);
+    }
+
+    [Function("mcp_get_repo_stats")]
+    public async Task<string> GetRepoStats(
+        [McpToolTrigger("get_repo_stats", "Get repository statistics — issues, PRs, stars, forks, size")] ToolInvocationContext context,
+        [McpToolProperty("repos", "Comma-separated repo names (default: all)")] string? repos)
+    {
+        _logger.LogInformation("MCP tool invoked: get_repo_stats");
+        return await _gitHubTool.GetRepoStatsAsync(repos);
+    }
+
+    [Function("mcp_close_or_reopen_issue")]
+    public async Task<string> CloseOrReopenIssue(
+        [McpToolTrigger("close_or_reopen_issue", "Close or reopen a GitHub issue")] ToolInvocationContext context,
+        [McpToolProperty("repo", "Repository name", isRequired: true)] string repo,
+        [McpToolProperty("issueNumber", "Issue number", isRequired: true)] string issueNumber,
+        [McpToolProperty("action", "Action: close or reopen", isRequired: true)] string action,
+        [McpToolProperty("comment", "Optional comment to add")] string? comment)
+    {
+        _logger.LogInformation("MCP tool invoked: close_or_reopen_issue");
+        return await _gitHubTool.CloseOrReopenIssueAsync(repo, int.Parse(issueNumber), action, comment);
+    }
+
+    [Function("mcp_add_label")]
+    public async Task<string> AddLabel(
+        [McpToolTrigger("add_label", "Add labels to a GitHub issue or pull request")] ToolInvocationContext context,
+        [McpToolProperty("repo", "Repository name", isRequired: true)] string repo,
+        [McpToolProperty("issueNumber", "Issue or PR number", isRequired: true)] string issueNumber,
+        [McpToolProperty("labels", "Comma-separated labels to add", isRequired: true)] string labels)
+    {
+        _logger.LogInformation("MCP tool invoked: add_label");
+        return await _gitHubTool.AddLabelAsync(repo, int.Parse(issueNumber), labels);
+    }
 }

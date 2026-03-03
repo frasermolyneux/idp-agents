@@ -1,9 +1,5 @@
 using System.Text.Json;
 
-using Azure.ResourceManager.ResourceGraph;
-using Azure.ResourceManager.ResourceGraph.Models;
-using Azure.ResourceManager;
-
 using Microsoft.Extensions.Logging;
 
 using MX.IDP.Agents.Models;
@@ -19,13 +15,13 @@ public class KqlCampaignSource : ICampaignDataSource
 {
     public string SourceType => "kql";
 
-    private readonly ArmClient _armClient;
+    private readonly IResourceGraphService _argService;
     private readonly IResourceRepoMapper _repoMapper;
     private readonly ILogger<KqlCampaignSource> _logger;
 
-    public KqlCampaignSource(ArmClient armClient, IResourceRepoMapper repoMapper, ILogger<KqlCampaignSource> logger)
+    public KqlCampaignSource(IResourceGraphService argService, IResourceRepoMapper repoMapper, ILogger<KqlCampaignSource> logger)
     {
-        _armClient = armClient;
+        _argService = argService;
         _repoMapper = repoMapper;
         _logger = logger;
     }
@@ -45,7 +41,6 @@ public class KqlCampaignSource : ICampaignDataSource
             return findings;
         }
 
-        // Validate query doesn't contain dangerous operations
         if (!ValidateQuery(kqlQuery))
         {
             _logger.LogWarning("KQL query rejected by validation: {Query}", kqlQuery);
@@ -54,18 +49,12 @@ public class KqlCampaignSource : ICampaignDataSource
 
         try
         {
-            var tenant = _armClient.GetTenants().First();
-            var queryContent = new ResourceQueryContent(kqlQuery);
+            var subscriptionIds = filter?.SubscriptionIds is not null
+                ? string.Join(",", filter.SubscriptionIds)
+                : null;
 
-            // Add subscription filters if specified
-            if (filter?.SubscriptionIds is not null)
-            {
-                foreach (var subId in filter.SubscriptionIds)
-                    queryContent.Subscriptions.Add(subId);
-            }
-
-            var result = await tenant.GetResourcesAsync(queryContent);
-            var data = JsonDocument.Parse(result.Value.Data.ToString()).RootElement;
+            var result = await _argService.QueryAsync(kqlQuery, subscriptionIds);
+            var data = JsonDocument.Parse(result.Data).RootElement;
 
             if (!data.TryGetProperty("rows", out var rows))
             {
@@ -73,7 +62,6 @@ public class KqlCampaignSource : ICampaignDataSource
                 return findings;
             }
 
-            // Get column names from response
             var columns = new List<string>();
             if (data.TryGetProperty("columns", out var cols))
             {
@@ -100,14 +88,11 @@ public class KqlCampaignSource : ICampaignDataSource
                 if (filter?.Impact is not null && !string.Equals(severity, filter.Impact, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                // Map resource to repo via Workload tag
                 var fullResourceId = $"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/{resourceType}/{resourceName}";
                 var repo = await _repoMapper.MapResourceToRepoAsync(fullResourceId);
 
                 if (filter?.Repos is not null && repo is not null && !filter.Repos.Contains(repo, StringComparer.OrdinalIgnoreCase))
                     continue;
-
-                var resourceId = fullResourceId;
 
                 findings.Add(new CampaignFinding
                 {
@@ -117,9 +102,9 @@ public class KqlCampaignSource : ICampaignDataSource
                         ? $"Resource `{resourceName}` of type `{resourceType}` in resource group `{resourceGroup}` matched the KQL campaign query."
                         : description,
                     Severity = MapSeverity(severity),
-                    ResourceId = resourceId,
+                    ResourceId = fullResourceId,
                     Repo = repo,
-                    DeduplicationKey = $"kql:{resourceId}"
+                    DeduplicationKey = $"kql:{fullResourceId}"
                 });
             }
         }
@@ -132,13 +117,11 @@ public class KqlCampaignSource : ICampaignDataSource
         return findings;
     }
 
-    private static bool ValidateQuery(string query)
+    internal static bool ValidateQuery(string query)
     {
         var lower = query.ToLowerInvariant().Trim();
-        // Block mutations — ARG is read-only anyway, but be explicit
         if (lower.Contains("update ") || lower.Contains("delete ") || lower.Contains("drop "))
             return false;
-        // Must start with a resource type query
         return lower.StartsWith("resources") || lower.StartsWith("resourcecontainers") ||
                lower.StartsWith("servicehealthresources") || lower.StartsWith("advisorresources") ||
                lower.StartsWith("securityresources") || lower.StartsWith("policyresources");

@@ -31,6 +31,13 @@ public class McpToolFunctionTests
     [InlineData("mcp_get_campaign_findings", "GetCampaignFindings")]
     [InlineData("mcp_list_campaign_templates", "ListCampaignTemplates")]
     [InlineData("mcp_create_campaign_from_template", "CreateCampaignFromTemplate")]
+    [InlineData("mcp_list_repositories", "ListRepositories")]
+    [InlineData("mcp_get_pull_requests", "GetPullRequests")]
+    [InlineData("mcp_get_workflow_failures", "GetWorkflowFailures")]
+    [InlineData("mcp_search_code", "SearchCode")]
+    [InlineData("mcp_get_repo_stats", "GetRepoStats")]
+    [InlineData("mcp_close_or_reopen_issue", "CloseOrReopenIssue")]
+    [InlineData("mcp_add_label", "AddLabel")]
     public void McpToolFunction_HasFunctionAttribute(string functionName, string methodName)
     {
         var method = typeof(McpToolFunctions).GetMethod(methodName);
@@ -61,6 +68,13 @@ public class McpToolFunctionTests
     [InlineData("GetCampaignFindings", "get_campaign_findings")]
     [InlineData("ListCampaignTemplates", "list_campaign_templates")]
     [InlineData("CreateCampaignFromTemplate", "create_campaign_from_template")]
+    [InlineData("ListRepositories", "list_repositories")]
+    [InlineData("GetPullRequests", "get_pull_requests")]
+    [InlineData("GetWorkflowFailures", "get_workflow_failures")]
+    [InlineData("SearchCode", "search_code")]
+    [InlineData("GetRepoStats", "get_repo_stats")]
+    [InlineData("CloseOrReopenIssue", "close_or_reopen_issue")]
+    [InlineData("AddLabel", "add_label")]
     public void McpToolFunction_HasMcpToolTrigger(string methodName, string toolName)
     {
         var method = typeof(McpToolFunctions).GetMethod(methodName);
@@ -84,7 +98,7 @@ public class McpToolFunctionTests
             .Where(m => m.GetCustomAttribute<FunctionAttribute>() is not null)
             .ToList();
 
-        Assert.Equal(18, methods.Count);
+        Assert.Equal(25, methods.Count);
     }
 
     [Fact]

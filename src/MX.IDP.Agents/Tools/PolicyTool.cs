@@ -1,23 +1,21 @@
 using System.ComponentModel;
 using System.Text.Json;
 
-using Azure.ResourceManager;
-using Azure.ResourceManager.ResourceGraph;
-using Azure.ResourceManager.ResourceGraph.Models;
-
 using Microsoft.ApplicationInsights;
 using Microsoft.SemanticKernel;
+
+using MX.IDP.Agents.Services;
 
 namespace MX.IDP.Agents.Tools;
 
 public class PolicyTool
 {
-    private readonly ArmClient _armClient;
+    private readonly IResourceGraphService _argService;
     private readonly TelemetryClient? _telemetryClient;
 
-    public PolicyTool(ArmClient armClient, TelemetryClient? telemetryClient = null)
+    public PolicyTool(IResourceGraphService argService, TelemetryClient? telemetryClient = null)
     {
-        _armClient = armClient;
+        _argService = argService;
         _telemetryClient = telemetryClient;
     }
 
@@ -32,16 +30,8 @@ public class PolicyTool
             ["SubscriptionId"] = subscriptionId ?? "all"
         });
 
-        var query = @"
-            PolicyResources
-            | where type == 'microsoft.policyinsights/policystates'
-            | extend complianceState = tostring(properties.complianceState)
-            | summarize compliant = countif(complianceState == 'Compliant'),
-                        nonCompliant = countif(complianceState == 'NonCompliant')
-                        by subscriptionId
-            | order by nonCompliant desc";
-
-        return await RunResourceGraphQuery(query, subscriptionId);
+        var result = await _argService.GetPolicyComplianceSummaryAsync(subscriptionId);
+        return FormatResult(result);
     }
 
     [KernelFunction("get_non_compliant_resources")]
@@ -56,45 +46,15 @@ public class PolicyTool
             ["SubscriptionId"] = subscriptionId ?? "all"
         });
 
-        var query = $@"
-            PolicyResources
-            | where type == 'microsoft.policyinsights/policystates'
-            | where properties.complianceState == 'NonCompliant'
-            | extend resourceId = tostring(properties.resourceId),
-                     resourceType = tostring(properties.resourceType),
-                     policyDefinition = tostring(properties.policyDefinitionName),
-                     policyAssignment = tostring(properties.policyAssignmentName)
-            | project subscriptionId, resourceId, resourceType, policyDefinition, policyAssignment
-            | take {maxResults}";
-
-        return await RunResourceGraphQuery(query, subscriptionId);
+        var result = await _argService.GetNonCompliantResourcesAsync(subscriptionId, maxResults);
+        return FormatResult(result);
     }
 
-    private async Task<string> RunResourceGraphQuery(string query, string? subscriptionId)
-    {
-        var tenant = _armClient.GetTenants().First();
-        var content = new ResourceQueryContent(query);
-
-        if (!string.IsNullOrEmpty(subscriptionId))
-        {
-            content.Subscriptions.Add(subscriptionId);
-        }
-        else
-        {
-            await foreach (var sub in _armClient.GetSubscriptions().GetAllAsync())
-            {
-                content.Subscriptions.Add(sub.Data.SubscriptionId);
-            }
-        }
-
-        var response = await tenant.GetResourcesAsync(content);
-        var result = response.Value;
-
-        return JsonSerializer.Serialize(new
+    private static string FormatResult(ResourceGraphResult result) =>
+        JsonSerializer.Serialize(new
         {
             totalRecords = result.TotalRecords,
             count = result.Count,
-            data = result.Data.ToString()
+            data = result.Data
         }, new JsonSerializerOptions { WriteIndented = true });
-    }
 }
