@@ -61,7 +61,7 @@ resource "azurerm_linux_function_app" "function_app" {
     "AzureOpenAI__ChatDeployment"       = "gpt-4.1-mini"
     "AzureOpenAI__EmbeddingDeployment"  = "text-embedding-ada-002"
     "AzureSearch__Endpoint"             = local.ai_search_endpoint
-    "KnowledgeStorage__serviceUri"      = local.knowledge_storage_endpoint
+    "KnowledgeStorage__blobServiceUri"  = local.knowledge_storage_endpoint
     "KeyVault__Uri"               = local.key_vault_uri
     "CosmosDb__Endpoint"          = local.cosmosdb_endpoint
     "GitHubApp__AppId"            = local.github_app_id
