@@ -82,6 +82,7 @@ builder.Services.AddSingleton<IKnowledgeIndexService, KnowledgeIndexService>();
 
 // Blob storage client for knowledge docs reindex
 var knowledgeStorageConn = builder.Configuration["KnowledgeStorage"]
+                           ?? builder.Configuration["KnowledgeStorage:blobServiceUri"]
                            ?? builder.Configuration["KnowledgeStorage__blobServiceUri"];
 if (!string.IsNullOrEmpty(knowledgeStorageConn))
 {

@@ -130,12 +130,14 @@ public class KnowledgeIndexerFunctions
             var blobCount = 0;
             if (_blobServiceClient is not null)
             {
+                _logger.LogInformation("BlobServiceClient available, enumerating knowledge-docs container");
                 try
                 {
                     var container = _blobServiceClient.GetBlobContainerClient("knowledge-docs");
                     await foreach (var blob in container.GetBlobsAsync())
                     {
                         var fileName = Path.GetFileName(blob.Name);
+                        _logger.LogInformation("Found blob: {BlobName}, IsTextFile: {IsText}", blob.Name, IsTextFile(fileName));
                         if (!IsTextFile(fileName)) continue;
 
                         try
@@ -160,7 +162,12 @@ public class KnowledgeIndexerFunctions
                     _logger.LogWarning(ex, "Failed to enumerate blob container for reindex");
                 }
             }
+            else
+            {
+                _logger.LogWarning("BlobServiceClient is null — KnowledgeStorage config may be missing. Cannot reindex blob storage.");
+            }
 
+            _logger.LogInformation("Blob storage reindex complete: {Count} files indexed", blobCount);
             result = result with { message = result.message + $" | Reindexed {blobCount} blob storage files", indexed = result.indexed + blobCount };
         }
 
