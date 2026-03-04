@@ -26,7 +26,7 @@ public class AgentRouter : IAgentRouter
         Categories:
         - OpsBot: Azure infrastructure, resources, subscriptions, advisor recommendations, resource health, deployments, cost, alerts, monitoring, incidents
         - ComplianceBot: Azure Policy compliance, non-compliant resources, policy violations, security posture
-        - GitHubBot: GitHub issues, pull requests, Actions workflows, repository management, listing repositories, creating issues, assigning work, Dependabot alerts, code scanning alerts, security vulnerabilities
+        - GitHubBot: GitHub issues, pull requests, Actions workflows, repository management, listing repositories, creating issues, assigning work, Dependabot alerts, code scanning alerts, security vulnerabilities, environments, deployments, versions, releases, tags
         - KnowledgeBot: Documentation questions, how-to guides, runbooks, incident reports, ADRs, Terraform patterns, architecture decisions, best practices
         - CampaignBot: Campaigns, proactive scans, remediation tracking, templates, creating campaigns for advisor/policy/dev standards/repo config/dependabot/codeql/kql issues, campaign progress, approvals
         - GeneralBot: General questions, greetings, help requests, anything not clearly matching another category
@@ -104,10 +104,14 @@ public class AgentRouter : IAgentRouter
                 - get_repo_stats: Get statistics for repos — issues, PRs, stars, forks, size
                 - close_or_reopen_issue: Close or reopen an issue with optional comment
                 - add_label: Add labels to an issue or pull request
+                - get_environments: Get deployment environments for a repository
+                - get_version_info: Get version/release info — Nerdbank base version, latest release tag, recent releases
 
                 IMPORTANT tool selection:
                 - For Dependabot alerts / dependency vulnerabilities → use get_dependabot_alerts (NOT list_issues)
                 - For code scanning / CodeQL alerts → use get_code_scanning_alerts (NOT list_issues)
+                - For environments / deployment targets → use get_environments
+                - For versions / releases / tags / Nerdbank versioning → use get_version_info
                 - For regular GitHub issues → use list_issues
                 - To check across all repos, first call list_repositories, then call the relevant tool per repo
 

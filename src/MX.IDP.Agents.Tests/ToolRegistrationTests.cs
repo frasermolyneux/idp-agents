@@ -171,6 +171,8 @@ public class ToolRegistrationTests
     [InlineData("AddLabelAsync", "add_label")]
     [InlineData("GetDependabotAlertsAsync", "get_dependabot_alerts")]
     [InlineData("GetCodeScanningAlertsAsync", "get_code_scanning_alerts")]
+    [InlineData("GetEnvironmentsAsync", "get_environments")]
+    [InlineData("GetVersionInfoAsync", "get_version_info")]
     public void GitHubTool_HasKernelFunctions(string methodName, string functionName)
     {
         var method = typeof(GitHubTool).GetMethod(methodName);

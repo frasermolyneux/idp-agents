@@ -106,7 +106,7 @@ public class McpToolFunctionTests
             .Where(m => m.GetCustomAttribute<FunctionAttribute>() is not null)
             .ToList();
 
-        Assert.Equal(32, methods.Count);
+        Assert.Equal(34, methods.Count);
     }
 
     [Fact]

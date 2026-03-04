@@ -342,6 +342,24 @@ public class McpToolFunctions
         return await _gitHubTool.GetCodeScanningAlertsAsync(repo, severity);
     }
 
+    [Function("mcp_get_environments")]
+    public async Task<string> GetEnvironments(
+        [McpToolTrigger("get_environments", "Get GitHub deployment environments for a repository. Shows environment names and deployment branch policies.")] ToolInvocationContext context,
+        [McpToolProperty("repo", "Repository name", isRequired: true)] string repo)
+    {
+        _logger.LogInformation("MCP tool invoked: get_environments");
+        return await _gitHubTool.GetEnvironmentsAsync(repo);
+    }
+
+    [Function("mcp_get_version_info")]
+    public async Task<string> GetVersionInfo(
+        [McpToolTrigger("get_version_info", "Get version and release information for a repository. Returns Nerdbank GitVersioning base version, latest release tag, and recent releases.")] ToolInvocationContext context,
+        [McpToolProperty("repo", "Repository name", isRequired: true)] string repo)
+    {
+        _logger.LogInformation("MCP tool invoked: get_version_info");
+        return await _gitHubTool.GetVersionInfoAsync(repo);
+    }
+
     // Campaign lifecycle tools
 
     [Function("mcp_preview_campaign")]

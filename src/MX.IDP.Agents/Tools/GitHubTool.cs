@@ -252,4 +252,24 @@ public class GitHubTool
         var result = await _ghService.GetCodeScanningAlertsAsync(repos, severity);
         return JsonSerializer.Serialize(result, JsonOpts);
     }
+
+    [KernelFunction("get_environments")]
+    [Description("Gets GitHub deployment environments for a repository. Shows environment names and deployment branch policies. Use this when the user asks about environments, deployments, or deployment targets for a repo.")]
+    public async Task<string> GetEnvironmentsAsync(
+        [Description("Repository name (e.g. 'portal-sync')")] string repo)
+    {
+        Track("get_environments", new() { ["Repo"] = repo });
+        var result = await _ghService.GetEnvironmentsAsync(repo);
+        return JsonSerializer.Serialize(result, JsonOpts);
+    }
+
+    [KernelFunction("get_version_info")]
+    [Description("Gets version and release information for a repository. Returns Nerdbank GitVersioning base version (from version.json), latest release tag, recent tags, and release dates. Use this when the user asks about versions, releases, or what version a repo is on.")]
+    public async Task<string> GetVersionInfoAsync(
+        [Description("Repository name (e.g. 'portal-repository')")] string repo)
+    {
+        Track("get_version_info", new() { ["Repo"] = repo });
+        var result = await _ghService.GetVersionInfoAsync(repo);
+        return JsonSerializer.Serialize(result, JsonOpts);
+    }
 }

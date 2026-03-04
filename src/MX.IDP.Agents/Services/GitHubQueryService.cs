@@ -24,6 +24,8 @@ public interface IGitHubQueryService
     Task<List<RepoStatsInfo>> GetRepoStatsAsync(List<string>? repos = null);
     Task<IssueResult> CloseOrReopenIssueAsync(string repo, int issueNumber, string action, string? comment = null);
     Task<IssueResult> AddLabelAsync(string repo, int issueNumber, List<string> labels);
+    Task<List<EnvironmentInfo>> GetEnvironmentsAsync(string repo);
+    Task<RepoVersionInfo> GetVersionInfoAsync(string repo);
 }
 
 // Result types — shared between tools and campaign sources
@@ -138,6 +140,27 @@ public class IssueResult
     public string Url { get; set; } = "";
     public List<string> Labels { get; set; } = [];
     public List<string> Assignees { get; set; } = [];
+}
+
+public class EnvironmentInfo
+{
+    public string Name { get; set; } = "";
+    public string Url { get; set; } = "";
+    public string? DeploymentBranchPolicy { get; set; }
+    public string? CreatedAt { get; set; }
+    public string? UpdatedAt { get; set; }
+}
+
+public class RepoVersionInfo
+{
+    public string Repo { get; set; } = "";
+    public string? NerdbankVersion { get; set; }
+    public string? LatestReleaseTag { get; set; }
+    public string? LatestReleaseName { get; set; }
+    public string? LatestReleaseDate { get; set; }
+    public bool? LatestReleaseIsPrerelease { get; set; }
+    public int TotalReleases { get; set; }
+    public List<string> RecentTags { get; set; } = [];
 }
 
 public class GitHubQueryService : IGitHubQueryService
@@ -457,6 +480,85 @@ public class GitHubQueryService : IGitHubQueryService
         return MapIssueResult(issue);
     }
 
+    public async Task<List<EnvironmentInfo>> GetEnvironmentsAsync(string repo)
+    {
+        var client = await _clientFactory.CreateClientAsync();
+        var results = new List<EnvironmentInfo>();
+
+        try
+        {
+            var response = await client.Connection.Get<EnvironmentsResponseDto>(
+                new Uri($"repos/{DefaultOwner}/{repo}/environments", UriKind.Relative),
+                null, "application/vnd.github+json");
+
+            if (response?.Body?.Environments is not null)
+            {
+                foreach (var env in response.Body.Environments)
+                {
+                    results.Add(new EnvironmentInfo
+                    {
+                        Name = env.Name ?? "",
+                        Url = $"https://github.com/{DefaultOwner}/{repo}/deployments/{env.Name}",
+                        DeploymentBranchPolicy = env.DeploymentBranchPolicy?.Type,
+                        CreatedAt = env.CreatedAt,
+                        UpdatedAt = env.UpdatedAt
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get environments for {Repo}", repo);
+        }
+
+        _logger.LogInformation("Found {Count} environments for {Repo}", results.Count, repo);
+        return results;
+    }
+
+    public async Task<RepoVersionInfo> GetVersionInfoAsync(string repo)
+    {
+        var client = await _clientFactory.CreateClientAsync();
+        var info = new RepoVersionInfo { Repo = repo };
+
+        // Try to read version.json (Nerdbank GitVersioning)
+        try
+        {
+            var rawContent = await client.Repository.Content.GetRawContentByRef(DefaultOwner, repo, "version.json", "main");
+            var versionJson = System.Text.Encoding.UTF8.GetString(rawContent);
+            using var doc = JsonDocument.Parse(versionJson);
+            if (doc.RootElement.TryGetProperty("version", out var ver))
+                info.NerdbankVersion = ver.GetString();
+        }
+        catch (NotFoundException) { /* No version.json */ }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read version.json for {Repo}", repo);
+        }
+
+        // Get releases
+        try
+        {
+            var releases = await client.Repository.Release.GetAll(DefaultOwner, repo, new ApiOptions { PageSize = 10, PageCount = 1 });
+            info.TotalReleases = releases.Count;
+
+            if (releases.Count > 0)
+            {
+                var latest = releases[0];
+                info.LatestReleaseTag = latest.TagName;
+                info.LatestReleaseName = latest.Name;
+                info.LatestReleaseDate = latest.PublishedAt?.ToString("yyyy-MM-dd HH:mm") ?? latest.CreatedAt.ToString("yyyy-MM-dd HH:mm");
+                info.LatestReleaseIsPrerelease = latest.Prerelease;
+                info.RecentTags = releases.Take(5).Select(r => r.TagName).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get releases for {Repo}", repo);
+        }
+
+        return info;
+    }
+
     // Helpers
 
     private async Task<List<Repository>> GetTargetReposAsync(IGitHubClient client, List<string>? repos)
@@ -559,5 +661,24 @@ public class GitHubQueryService : IGitHubQueryService
     {
         [JsonPropertyName("path")] public string? Path { get; set; }
         [JsonPropertyName("start_line")] public int? StartLine { get; set; }
+    }
+
+    private class EnvironmentsResponseDto
+    {
+        [JsonPropertyName("total_count")] public int TotalCount { get; set; }
+        [JsonPropertyName("environments")] public List<EnvironmentDto>? Environments { get; set; }
+    }
+
+    private class EnvironmentDto
+    {
+        [JsonPropertyName("name")] public string? Name { get; set; }
+        [JsonPropertyName("created_at")] public string? CreatedAt { get; set; }
+        [JsonPropertyName("updated_at")] public string? UpdatedAt { get; set; }
+        [JsonPropertyName("deployment_branch_policy")] public DeploymentBranchPolicyDto? DeploymentBranchPolicy { get; set; }
+    }
+
+    private class DeploymentBranchPolicyDto
+    {
+        [JsonPropertyName("type")] public string? Type { get; set; }
     }
 }
