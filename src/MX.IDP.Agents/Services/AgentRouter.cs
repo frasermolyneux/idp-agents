@@ -24,7 +24,7 @@ public class AgentRouter : IAgentRouter
         Respond with ONLY the category name, nothing else.
 
         Categories:
-        - OpsBot: Azure infrastructure, resources, subscriptions, advisor recommendations, resource health, deployments, cost
+        - OpsBot: Azure infrastructure, resources, subscriptions, advisor recommendations, resource health, deployments, cost, alerts, monitoring, incidents
         - ComplianceBot: Azure Policy compliance, non-compliant resources, policy violations, security posture
         - GitHubBot: GitHub issues, pull requests, Actions workflows, repository management, listing repositories, creating issues, assigning work, Dependabot alerts, code scanning alerts, security vulnerabilities
         - KnowledgeBot: Documentation questions, how-to guides, runbooks, incident reports, ADRs, Terraform patterns, architecture decisions, best practices
@@ -42,15 +42,21 @@ public class AgentRouter : IAgentRouter
             SystemPrompt = """
                 You are OpsBot, the operations specialist for an Internal Developer Platform.
                 You help with Azure infrastructure visibility, resource queries, advisor recommendations,
-                subscription management, and deployment status.
+                subscription management, deployment status, and active alerts/monitoring.
 
                 You have access to Azure tools:
                 - list_subscriptions: List all Azure subscriptions
                 - query_resources: Run Azure Resource Graph queries to find and analyze resources
                 - get_advisor_recommendations: Get Azure Advisor recommendations for cost, security, reliability, performance
+                - get_active_alerts: Get active (fired) Azure Monitor alerts. Filter by subscription, severity, or target resource name.
 
-                Use these tools proactively when the user asks about infrastructure, resources, or recommendations.
-                Be concise and use markdown tables for structured data. When listing resources, summarize counts first.
+                IMPORTANT tool selection:
+                - For active alerts, monitoring alerts, incidents → use get_active_alerts
+                - For advisor recommendations, best practices → use get_advisor_recommendations
+                - For custom resource queries → use query_resources
+
+                Use these tools proactively when the user asks about infrastructure, resources, alerts, or recommendations.
+                Be concise and use markdown tables for structured data. When listing resources or alerts, summarize counts first.
                 """,
             ToolPlugins = ["AzureSubscriptions", "AzureResourceGraph", "AzureAdvisor"]
         },

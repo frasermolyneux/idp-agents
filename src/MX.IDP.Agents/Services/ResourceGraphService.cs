@@ -18,6 +18,7 @@ public interface IResourceGraphService
     Task<ResourceGraphResult> GetAdvisorRecommendationsAsync(string? category = null, string? impact = null, int maxResults = 25, string? subcategory = null);
     Task<ResourceGraphResult> GetPolicyComplianceSummaryAsync(string? subscriptionId = null);
     Task<ResourceGraphResult> GetNonCompliantResourcesAsync(string? subscriptionId = null, int maxResults = 25);
+    Task<ResourceGraphResult> GetActiveAlertsAsync(string? subscriptionId = null, string? severity = null, string? targetResource = null, int maxResults = 50);
 }
 
 public class ResourceGraphResult
@@ -121,6 +122,35 @@ public class ResourceGraphService : IResourceGraphService
                      policyDefinition = tostring(properties.policyDefinitionName),
                      policyAssignment = tostring(properties.policyAssignmentName)
             | project id, resourceGroup, subscriptionId, resourceId, resourceType, policyDefinition, policyAssignment, properties
+            | take {maxResults}";
+
+        return await QueryAsync(query, subscriptionId);
+    }
+
+    public async Task<ResourceGraphResult> GetActiveAlertsAsync(string? subscriptionId = null, string? severity = null, string? targetResource = null, int maxResults = 50)
+    {
+        var filters = new List<string>();
+        if (!string.IsNullOrEmpty(severity))
+            filters.Add($"| where severity =~ '{severity}'");
+        if (!string.IsNullOrEmpty(targetResource))
+            filters.Add($"| where targetResource contains '{targetResource}'");
+
+        var query = $@"
+            AlertsManagementResources
+            | where type == 'microsoft.alertsmanagement/alerts'
+            | where properties.essentials.monitorCondition == 'Fired'
+            | extend severity = tostring(properties.essentials.severity),
+                     alertState = tostring(properties.essentials.alertState),
+                     alertRule = tostring(properties.essentials.alertRule),
+                     targetResource = tostring(properties.essentials.targetResource),
+                     targetResourceType = tostring(properties.essentials.targetResourceType),
+                     monitorService = tostring(properties.essentials.monitorService),
+                     firedTime = todatetime(properties.essentials.startDateTime),
+                     description = tostring(properties.essentials.description)
+            {string.Join("\n            ", filters)}
+            | project id, name, subscriptionId, resourceGroup, severity, alertState, alertRule,
+                      targetResource, targetResourceType, monitorService, firedTime, description
+            | order by firedTime desc
             | take {maxResults}";
 
         return await QueryAsync(query, subscriptionId);

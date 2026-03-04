@@ -94,6 +94,18 @@ public class ToolRegistrationTests
 
     [Fact]
     [Trait("Category", "Unit")]
+    public void AdvisorTool_HasKernelFunction_GetActiveAlerts()
+    {
+        var method = typeof(AdvisorTool).GetMethod("GetActiveAlertsAsync");
+        Assert.NotNull(method);
+
+        var attr = method!.GetCustomAttribute<KernelFunctionAttribute>();
+        Assert.NotNull(attr);
+        Assert.Equal("get_active_alerts", attr!.Name);
+    }
+
+    [Fact]
+    [Trait("Category", "Unit")]
     public void PolicyTool_HasKernelFunction_GetPolicyCompliance()
     {
         var method = typeof(PolicyTool).GetMethod("GetPolicyComplianceAsync");

@@ -67,6 +67,19 @@ public class McpToolFunctions
         return await _advisorTool.GetRecommendationsAsync(category, impact, max, subcategory);
     }
 
+    [Function("mcp_get_active_alerts")]
+    public async Task<string> GetActiveAlerts(
+        [McpToolTrigger("get_active_alerts", "Get active (fired) Azure Monitor alerts across all subscriptions. Filter by severity, subscription, or target resource.")] ToolInvocationContext context,
+        [McpToolProperty("subscriptionId", "Optional subscription ID to scope to")] string? subscriptionId,
+        [McpToolProperty("severity", "Filter by severity: Sev0, Sev1, Sev2, Sev3, Sev4")] string? severity,
+        [McpToolProperty("targetResource", "Filter by target resource name (partial match, e.g. 'portal-sync')")] string? targetResource,
+        [McpToolProperty("maxResults", "Maximum number of alerts to return (default 50)")] string? maxResults)
+    {
+        _logger.LogInformation("MCP tool invoked: get_active_alerts");
+        var max = int.TryParse(maxResults, out var m) ? m : 50;
+        return await _advisorTool.GetActiveAlertsAsync(subscriptionId, severity, targetResource, max);
+    }
+
     [Function("mcp_get_policy_compliance")]
     public async Task<string> GetPolicyCompliance(
         [McpToolTrigger("get_policy_compliance", "Get Azure Policy compliance summary showing compliant vs non-compliant resource counts per subscription")] ToolInvocationContext context,

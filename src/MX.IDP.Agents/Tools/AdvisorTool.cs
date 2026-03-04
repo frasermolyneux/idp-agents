@@ -44,4 +44,30 @@ public class AdvisorTool
             data = result.Data
         }, new JsonSerializerOptions { WriteIndented = true });
     }
+
+    [KernelFunction("get_active_alerts")]
+    [Description("Gets active (fired) Azure Monitor alerts across all subscriptions. Optionally filter by severity, subscription, or target resource name. Use this when the user asks about alerts, incidents, or monitoring.")]
+    public async Task<string> GetActiveAlertsAsync(
+        [Description("Optional: subscription ID to scope to a single subscription.")] string? subscriptionId = null,
+        [Description("Optional: filter by severity — Sev0, Sev1, Sev2, Sev3, Sev4. Leave empty for all.")] string? severity = null,
+        [Description("Optional: filter by target resource name (partial match). E.g. 'portal-sync' to find alerts related to that workload.")] string? targetResource = null,
+        [Description("Optional: maximum number of alerts to return. Default 50.")] int maxResults = 50)
+    {
+        _telemetryClient?.TrackEvent("ToolInvocation", new Dictionary<string, string>
+        {
+            ["Tool"] = "get_active_alerts",
+            ["SubscriptionId"] = subscriptionId ?? "all",
+            ["Severity"] = severity ?? "all",
+            ["TargetResource"] = targetResource ?? "all"
+        });
+
+        var result = await _argService.GetActiveAlertsAsync(subscriptionId, severity, targetResource, maxResults);
+
+        return JsonSerializer.Serialize(new
+        {
+            totalRecords = result.TotalRecords,
+            count = result.Count,
+            data = result.Data
+        }, new JsonSerializerOptions { WriteIndented = true });
+    }
 }
