@@ -88,10 +88,16 @@ public class KqlCampaignSource : ICampaignDataSource
                 if (filter?.Impact is not null && !string.Equals(severity, filter.Impact, StringComparison.OrdinalIgnoreCase))
                     continue;
 
+                // Resource group filtering
+                if (filter?.ResourceGroups is not null && !filter.ResourceGroups.Contains(resourceGroup, StringComparer.OrdinalIgnoreCase))
+                    continue;
+
                 var fullResourceId = $"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/{resourceType}/{resourceName}";
                 var repo = await _repoMapper.MapResourceToRepoAsync(fullResourceId);
 
                 if (filter?.Repos is not null && repo is not null && !filter.Repos.Contains(repo, StringComparer.OrdinalIgnoreCase))
+                    continue;
+                if (filter?.ExcludeRepos is not null && repo is not null && filter.ExcludeRepos.Contains(repo, StringComparer.OrdinalIgnoreCase))
                     continue;
 
                 findings.Add(new CampaignFinding

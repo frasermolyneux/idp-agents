@@ -36,8 +36,16 @@ public class AdvisorCampaignSource : ICampaignDataSource
             var problem = row.TryGetProperty("problem", out var prob) ? prob.GetString() : "Advisor recommendation";
             var solution = row.TryGetProperty("solution", out var sol) ? sol.GetString() : "";
 
+            // Resource group filtering
+            if (filter?.ResourceGroups is not null && !MatchesResourceGroup(resourceId, filter.ResourceGroups))
+                continue;
+
             var repo = await _repoMapper.MapResourceToRepoAsync(resourceId);
+
+            // Repo filtering (include + exclude)
             if (filter?.Repos is not null && repo is not null && !filter.Repos.Contains(repo, StringComparer.OrdinalIgnoreCase))
+                continue;
+            if (filter?.ExcludeRepos is not null && repo is not null && filter.ExcludeRepos.Contains(repo, StringComparer.OrdinalIgnoreCase))
                 continue;
 
             findings.Add(new CampaignFinding
@@ -54,6 +62,18 @@ public class AdvisorCampaignSource : ICampaignDataSource
 
         _logger.LogInformation("Advisor scan found {Count} findings", findings.Count);
         return findings;
+    }
+
+    private static bool MatchesResourceGroup(string resourceId, List<string> resourceGroups)
+    {
+        // Extract RG from resource ID: /subscriptions/.../resourceGroups/{rg}/...
+        var parts = resourceId.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < parts.Length - 1; i++)
+        {
+            if (string.Equals(parts[i], "resourceGroups", StringComparison.OrdinalIgnoreCase))
+                return resourceGroups.Contains(parts[i + 1], StringComparer.OrdinalIgnoreCase);
+        }
+        return false;
     }
 
     private static string MapImpactToSeverity(string? impact) => impact switch

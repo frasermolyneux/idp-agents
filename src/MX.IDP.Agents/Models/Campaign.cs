@@ -22,11 +22,23 @@ public class Campaign
     [JsonProperty("status")]
     public string Status { get; set; } = "created"; // created, running, paused, completed, failed
 
+    [JsonProperty("actionMode")]
+    public string ActionMode { get; set; } = "issue"; // audit, issue, copilot_agent
+
+    [JsonProperty("requireApproval")]
+    public bool RequireApproval { get; set; }
+
     [JsonProperty("filter")]
     public CampaignFilter? Filter { get; set; }
 
     [JsonProperty("kqlQuery")]
-    public string? KqlQuery { get; set; } // Custom KQL query for kql source type
+    public string? KqlQuery { get; set; }
+
+    [JsonProperty("issueTemplate")]
+    public CampaignIssueTemplate? IssueTemplate { get; set; }
+
+    [JsonProperty("schedule")]
+    public CampaignSchedule? Schedule { get; set; }
 
     [JsonProperty("stats")]
     public CampaignStats Stats { get; set; } = new();
@@ -52,14 +64,62 @@ public class CampaignFilter
     [JsonProperty("subcategory")]
     public string? Subcategory { get; set; } // For advisor: e.g. ServiceUpgradeAndRetirement
 
+    [JsonProperty("severity")]
+    public string? Severity { get; set; } // Cross-source severity filter: High, Medium, Low
+
     [JsonProperty("subscriptionIds")]
     public List<string>? SubscriptionIds { get; set; }
 
     [JsonProperty("repos")]
     public List<string>? Repos { get; set; }
 
+    [JsonProperty("repoTopics")]
+    public List<string>? RepoTopics { get; set; }
+
+    [JsonProperty("excludeRepos")]
+    public List<string>? ExcludeRepos { get; set; }
+
+    [JsonProperty("resourceGroups")]
+    public List<string>? ResourceGroups { get; set; }
+
+    [JsonProperty("tags")]
+    public Dictionary<string, string>? Tags { get; set; }
+
+    [JsonProperty("createdAfter")]
+    public DateTimeOffset? CreatedAfter { get; set; }
+
     [JsonProperty("assignTo")]
-    public string? AssignTo { get; set; } // e.g., "copilot"
+    public string? AssignTo { get; set; }
+}
+
+public class CampaignIssueTemplate
+{
+    [JsonProperty("titlePattern")]
+    public string TitlePattern { get; set; } = "[IDP] {severity}: {title}";
+
+    [JsonProperty("bodyTemplate")]
+    public string BodyTemplate { get; set; } = string.Empty;
+
+    [JsonProperty("labels")]
+    public List<string>? Labels { get; set; }
+
+    [JsonProperty("assignees")]
+    public List<string>? Assignees { get; set; }
+}
+
+public class CampaignSchedule
+{
+    [JsonProperty("cronExpression")]
+    public string CronExpression { get; set; } = string.Empty;
+
+    [JsonProperty("enabled")]
+    public bool Enabled { get; set; }
+
+    [JsonProperty("lastScheduledRun")]
+    public DateTimeOffset? LastScheduledRun { get; set; }
+
+    [JsonProperty("nextRun")]
+    public DateTimeOffset? NextRun { get; set; }
 }
 
 public class CampaignStats
@@ -78,6 +138,9 @@ public class CampaignStats
 
     [JsonProperty("issuesSkipped")]
     public int IssuesSkipped { get; set; }
+
+    [JsonProperty("pendingApproval")]
+    public int PendingApproval { get; set; }
 
     [JsonProperty("progressPercent")]
     public double ProgressPercent { get; set; }
@@ -116,7 +179,7 @@ public class CampaignFinding
     public string? IssueUrl { get; set; }
 
     [JsonProperty("status")]
-    public string Status { get; set; } = "new"; // new, pending_approval, issue_created, resolved, skipped, duplicate, dismissed, stale
+    public string Status { get; set; } = "new"; // new, audited, pending_approval, issue_created, resolved, skipped, duplicate, dismissed, stale
 
     [JsonProperty("deduplicationKey")]
     public string DeduplicationKey { get; set; } = string.Empty;

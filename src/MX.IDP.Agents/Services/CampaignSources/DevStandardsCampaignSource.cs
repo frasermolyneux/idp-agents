@@ -26,6 +26,10 @@ public class DevStandardsCampaignSource : ICampaignDataSource
 
         foreach (var bp in protections)
         {
+            // Exclude repos filtering
+            if (filter?.ExcludeRepos is not null && filter.ExcludeRepos.Contains(bp.Repo, StringComparer.OrdinalIgnoreCase))
+                continue;
+
             var repo = repos.FirstOrDefault(r => r.Name == bp.Repo);
 
             if (!bp.IsProtected)

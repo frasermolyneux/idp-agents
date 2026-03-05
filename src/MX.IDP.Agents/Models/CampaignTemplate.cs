@@ -23,6 +23,12 @@ public class CampaignTemplate
     [JsonPropertyName("icon")]
     public string Icon { get; set; } = "📋";
 
+    [JsonPropertyName("actionMode")]
+    public string ActionMode { get; set; } = "issue"; // audit, issue, copilot_agent
+
+    [JsonPropertyName("requireApproval")]
+    public bool RequireApproval { get; set; }
+
     [JsonPropertyName("defaultFilter")]
     public CampaignFilter? DefaultFilter { get; set; }
 
@@ -137,6 +143,8 @@ public static class CampaignTemplateLibrary
             Name = name ?? template.Name,
             Description = template.Description,
             SourceType = template.SourceType,
+            ActionMode = template.ActionMode,
+            RequireApproval = template.RequireApproval,
             KqlQuery = template.KqlQuery,
             Filter = template.DefaultFilter,
             UserId = userId

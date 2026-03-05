@@ -13,7 +13,9 @@ public interface ICampaignService
 {
     Task<Campaign> CreateAsync(Campaign campaign);
     Task<Campaign?> GetAsync(string campaignId, string userId);
+    Task<Campaign?> GetAsync(string campaignId);
     Task<List<Campaign>> ListAsync(string userId, string? status = null);
+    Task<List<Campaign>> GetScheduledCampaignsAsync();
     Task<Campaign> UpdateAsync(Campaign campaign);
     Task DeleteAsync(string campaignId, string userId);
     Task<List<CampaignFinding>> GetFindingsAsync(string campaignId, string? status = null);
@@ -58,6 +60,27 @@ public class CampaignService : ICampaignService
         }
     }
 
+    public async Task<Campaign?> GetAsync(string campaignId)
+    {
+        try
+        {
+            var query = _campaignsContainer.GetItemQueryIterator<Campaign>(
+                new QueryDefinition("SELECT * FROM c WHERE c.id = @id").WithParameter("@id", campaignId),
+                requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
+
+            if (query.HasMoreResults)
+            {
+                var response = await query.ReadNextAsync();
+                return response.FirstOrDefault();
+            }
+            return null;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
     public async Task<List<Campaign>> ListAsync(string userId, string? status = null)
     {
         var queryable = _campaignsContainer.GetItemLinqQueryable<Campaign>()
@@ -73,6 +96,27 @@ public class CampaignService : ICampaignService
             var response = await iterator.ReadNextAsync();
             campaigns.AddRange(response);
         }
+        return campaigns;
+    }
+
+    public async Task<List<Campaign>> GetScheduledCampaignsAsync()
+    {
+        // Cross-partition query: find all campaigns with an enabled schedule whose nextRun is due
+        var now = DateTimeOffset.UtcNow;
+        var query = new QueryDefinition(
+            "SELECT * FROM c WHERE c.schedule.enabled = true AND (c.schedule.nextRun <= @now OR NOT IS_DEFINED(c.schedule.nextRun))")
+            .WithParameter("@now", now.ToString("o"));
+
+        var campaigns = new List<Campaign>();
+        using var iterator = _campaignsContainer.GetItemQueryIterator<Campaign>(query,
+            requestOptions: new QueryRequestOptions { MaxItemCount = 50 });
+
+        while (iterator.HasMoreResults)
+        {
+            var response = await iterator.ReadNextAsync();
+            campaigns.AddRange(response);
+        }
+
         return campaigns;
     }
 

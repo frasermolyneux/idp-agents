@@ -183,7 +183,7 @@ public class McpToolFunctions
 
     [Function("mcp_create_campaign")]
     public async Task<string> CreateCampaign(
-        [McpToolTrigger("create_campaign", "Create a new campaign to systematically scan and remediate issues across repositories and infrastructure")] ToolInvocationContext context,
+        [McpToolTrigger("create_campaign", "Create a new campaign to systematically scan and remediate issues. Supports action modes (audit/issue/copilot_agent), approval gates, scheduling, and advanced filtering.")] ToolInvocationContext context,
         [McpToolProperty("name", "Campaign name", isRequired: true)] string name,
         [McpToolProperty("sourceType", "Source type: advisor, policy, dev_standards, repo_config, dependabot, codeql, or kql", isRequired: true)] string sourceType,
         [McpToolProperty("description", "Campaign description")] string? description,
@@ -191,10 +191,19 @@ public class McpToolFunctions
         [McpToolProperty("impact", "For advisor/dependabot/codeql: filter by impact (High, Medium, Low)")] string? impact,
         [McpToolProperty("repos", "Comma-separated repo names to scope the campaign to")] string? repos,
         [McpToolProperty("assignTo", "Assignee for created issues (use 'copilot' for Copilot coding agent)")] string? assignTo,
-        [McpToolProperty("kqlQuery", "For kql source type: the ARG KQL query to execute")] string? kqlQuery)
+        [McpToolProperty("kqlQuery", "For kql source type: the ARG KQL query to execute")] string? kqlQuery,
+        [McpToolProperty("actionMode", "Action mode: audit (findings only), issue (create GitHub issues), copilot_agent (create and assign to Copilot). Default: issue")] string? actionMode,
+        [McpToolProperty("requireApproval", "Require approval before creating issues (true/false). Default: false")] string? requireApproval,
+        [McpToolProperty("cronSchedule", "Cron expression for scheduled runs (e.g., '0 8 * * 1' for weekly Monday 8am)")] string? cronSchedule,
+        [McpToolProperty("repoTopics", "Comma-separated repo topics to dynamically resolve target repos")] string? repoTopics,
+        [McpToolProperty("excludeRepos", "Comma-separated repo names to exclude")] string? excludeRepos,
+        [McpToolProperty("resourceGroups", "Comma-separated Azure resource group names to scope to")] string? resourceGroups,
+        [McpToolProperty("severity", "Cross-source severity filter: High, Medium, Low")] string? severity)
     {
         _logger.LogInformation("MCP tool invoked: create_campaign");
-        return await _campaignTool.CreateCampaignAsync(name, sourceType, description, category, impact, repos, assignTo, kqlQuery);
+        var approvalBool = bool.TryParse(requireApproval, out var ap) && ap;
+        return await _campaignTool.CreateCampaignAsync(name, sourceType, description, category, impact, repos, assignTo, kqlQuery,
+            actionMode, approvalBool, cronSchedule, repoTopics, excludeRepos, resourceGroups, severity);
     }
 
     [Function("mcp_list_campaigns")]
@@ -238,10 +247,17 @@ public class McpToolFunctions
         [McpToolTrigger("create_campaign_from_template", "Create a campaign from a pre-built template by template ID")] ToolInvocationContext context,
         [McpToolProperty("templateId", "Template ID (e.g., security-hardening, dependency-updates, cost-optimisation)", isRequired: true)] string templateId,
         [McpToolProperty("name", "Optional custom name for the campaign")] string? name,
-        [McpToolProperty("assignTo", "Assignee for created issues (use 'copilot' for Copilot coding agent)")] string? assignTo)
+        [McpToolProperty("assignTo", "Assignee for created issues (use 'copilot' for Copilot coding agent)")] string? assignTo,
+        [McpToolProperty("actionMode", "Action mode override: audit, issue, copilot_agent")] string? actionMode,
+        [McpToolProperty("requireApproval", "Require approval before creating issues (true/false)")] string? requireApproval,
+        [McpToolProperty("cronSchedule", "Cron expression for scheduled runs")] string? cronSchedule,
+        [McpToolProperty("repos", "Comma-separated repo names to scope to")] string? repos,
+        [McpToolProperty("repoTopics", "Comma-separated repo topics to dynamically resolve target repos")] string? repoTopics,
+        [McpToolProperty("excludeRepos", "Comma-separated repo names to exclude")] string? excludeRepos)
     {
         _logger.LogInformation("MCP tool invoked: create_campaign_from_template");
-        return await _campaignTool.CreateCampaignFromTemplateAsync(templateId, name, assignTo);
+        var approvalBool = bool.TryParse(requireApproval, out var ap) ? (bool?)ap : null;
+        return await _campaignTool.CreateCampaignFromTemplateAsync(templateId, name, assignTo, actionMode, approvalBool, cronSchedule, repos, repoTopics, excludeRepos);
     }
 
     // New GitHub tools

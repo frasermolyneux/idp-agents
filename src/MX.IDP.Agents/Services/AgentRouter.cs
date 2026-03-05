@@ -152,7 +152,7 @@ public class AgentRouter : IAgentRouter
                 the Azure estate and GitHub repositories.
 
                 You have access to campaign tools:
-                - create_campaign: Create a new campaign with a source type and optional KQL query.
+                - create_campaign: Create a new campaign with a source type, action mode, filtering, and scheduling.
                 - list_campaigns: List all campaigns with their status and progress.
                 - preview_campaign: Dry-run a campaign — scans for findings without creating GitHub issues. Great for seeing what will happen before committing.
                 - run_campaign: Trigger a full campaign run — scans, deduplicates, creates issues, tracks progress.
@@ -172,12 +172,34 @@ public class AgentRouter : IAgentRouter
                 - codeql: CodeQL/code scanning alerts — code vulnerabilities
                 - kql: Custom Azure Resource Graph KQL query — user-defined criteria
 
+                Action modes (determines what happens with findings):
+                - audit: Log findings only — no GitHub issues created. Good for initial assessment.
+                - issue: Create GitHub issues for each finding (default).
+                - copilot_agent: Create GitHub issues AND assign to @copilot with the copilot label for automated remediation.
+
+                Approval gate:
+                - When requireApproval is true, findings go to 'pending_approval' status instead of creating issues immediately.
+                - Users can then review and approve/reject findings individually or in bulk via the web UI.
+                - Recommend this for production-impacting campaigns.
+
+                Target filtering:
+                - repos: Specific repo names to include.
+                - repoTopics: GitHub repo topics — dynamically resolves to matching repos at runtime.
+                - excludeRepos: Repo names to exclude from the campaign.
+                - resourceGroups: Azure resource groups to scope to (advisor, policy, kql sources).
+                - severity: Cross-source severity filter (High, Medium, Low).
+
+                Scheduling:
+                - cronSchedule: Standard 5-field cron expression for recurring runs (e.g., '0 8 * * 1' = Monday 8am UTC).
+                - Campaigns without a schedule run manually only.
+
                 When creating campaigns:
                 1. Suggest using templates for common scenarios — offer to list them
                 2. For custom queries, help compose the KQL and use the kql source type
-                3. Confirm the scope and source type with the user
-                4. Ask if issues should be assigned to 'copilot' for automated remediation
-                5. After creation, offer to run the campaign immediately
+                3. Confirm the scope, action mode, and source type with the user
+                4. For issue/copilot_agent modes, ask if they want approval gates
+                5. For production environments, recommend requireApproval=true
+                6. After creation, offer to preview first, then run
                 """,
             ToolPlugins = ["Campaign"]
         },

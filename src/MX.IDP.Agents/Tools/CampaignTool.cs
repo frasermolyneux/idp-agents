@@ -20,7 +20,7 @@ public class CampaignTool
     }
 
     [KernelFunction("create_campaign")]
-    [Description("Create a new campaign to systematically scan and remediate issues. Source types: advisor, policy, dev_standards, repo_config, dependabot, codeql, kql.")]
+    [Description("Create a new campaign to systematically scan and remediate issues. Source types: advisor, policy, dev_standards, repo_config, dependabot, codeql, kql. Action modes: audit (log only), issue (create GitHub issues), copilot_agent (create issues and assign to Copilot).")]
     public async Task<string> CreateCampaignAsync(
         [Description("Campaign name")] string name,
         [Description("Source type: advisor, policy, dev_standards, repo_config, dependabot, codeql, or kql")] string sourceType,
@@ -29,7 +29,14 @@ public class CampaignTool
         [Description("For advisor/dependabot/codeql: filter by impact (High, Medium, Low)")] string? impact = null,
         [Description("Comma-separated repo names to scope the campaign to")] string? repos = null,
         [Description("Assignee for created issues (use 'copilot' for Copilot coding agent)")] string? assignTo = null,
-        [Description("For kql source type: the ARG KQL query to execute")] string? kqlQuery = null)
+        [Description("For kql source type: the ARG KQL query to execute")] string? kqlQuery = null,
+        [Description("Action mode: audit (findings only), issue (create GitHub issues), copilot_agent (create and assign to Copilot). Default: issue")] string? actionMode = null,
+        [Description("Require approval before creating issues. Default: false")] bool requireApproval = false,
+        [Description("Cron expression for scheduled runs (e.g., '0 8 * * 1' for weekly Monday 8am). Leave empty for manual-only.")] string? cronSchedule = null,
+        [Description("Comma-separated repo topics to dynamically resolve target repos")] string? repoTopics = null,
+        [Description("Comma-separated repo names to exclude")] string? excludeRepos = null,
+        [Description("Comma-separated Azure resource group names to scope to")] string? resourceGroups = null,
+        [Description("Cross-source severity filter: High, Medium, Low")] string? severity = null)
     {
         var campaign = new Campaign
         {
@@ -38,17 +45,33 @@ public class CampaignTool
             SourceType = sourceType,
             KqlQuery = kqlQuery,
             UserId = "system",
+            ActionMode = actionMode ?? "issue",
+            RequireApproval = requireApproval,
             Filter = new CampaignFilter
             {
                 Category = category,
                 Impact = impact,
                 Repos = repos?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
-                AssignTo = assignTo
+                AssignTo = assignTo,
+                RepoTopics = repoTopics?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
+                ExcludeRepos = excludeRepos?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
+                ResourceGroups = resourceGroups?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
+                Severity = severity
             }
         };
 
+        if (!string.IsNullOrEmpty(cronSchedule))
+        {
+            campaign.Schedule = new CampaignSchedule
+            {
+                CronExpression = cronSchedule,
+                Enabled = true,
+                NextRun = Functions.CampaignSchedulerFunction.ComputeNextRun(cronSchedule)
+            };
+        }
+
         var created = await _campaignService.CreateAsync(campaign);
-        return JsonSerializer.Serialize(new { id = created.Id, name = created.Name, status = created.Status, sourceType = created.SourceType });
+        return JsonSerializer.Serialize(new { id = created.Id, name = created.Name, status = created.Status, sourceType = created.SourceType, actionMode = created.ActionMode, requireApproval = created.RequireApproval, scheduled = campaign.Schedule?.Enabled ?? false });
     }
 
     [KernelFunction("list_campaigns")]
@@ -116,20 +139,40 @@ public class CampaignTool
     public async Task<string> CreateCampaignFromTemplateAsync(
         [Description("Template ID (e.g., security-hardening, dependency-updates, cost-optimisation)")] string templateId,
         [Description("Optional custom name for the campaign")] string? name = null,
-        [Description("Assignee for created issues (use 'copilot' for Copilot coding agent)")] string? assignTo = null)
+        [Description("Assignee for created issues (use 'copilot' for Copilot coding agent)")] string? assignTo = null,
+        [Description("Action mode override: audit, issue, copilot_agent")] string? actionMode = null,
+        [Description("Require approval before creating issues")] bool? requireApproval = null,
+        [Description("Cron expression for scheduled runs (e.g., '0 8 * * 1' for weekly Monday 8am)")] string? cronSchedule = null,
+        [Description("Comma-separated repo names to scope the campaign to")] string? repos = null,
+        [Description("Comma-separated repo topics to dynamically resolve target repos")] string? repoTopics = null,
+        [Description("Comma-separated repo names to exclude")] string? excludeRepos = null)
     {
         var template = CampaignTemplateLibrary.GetById(templateId);
         if (template is null) return $"Template '{templateId}' not found. Use list_campaign_templates to see available templates.";
 
         var campaign = CampaignTemplateLibrary.CreateFromTemplate(template, name);
-        if (assignTo is not null)
+
+        if (actionMode is not null) campaign.ActionMode = actionMode;
+        if (requireApproval.HasValue) campaign.RequireApproval = requireApproval.Value;
+
+        campaign.Filter ??= new CampaignFilter();
+        if (assignTo is not null) campaign.Filter.AssignTo = assignTo;
+        if (repos is not null) campaign.Filter.Repos = repos.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        if (repoTopics is not null) campaign.Filter.RepoTopics = repoTopics.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        if (excludeRepos is not null) campaign.Filter.ExcludeRepos = excludeRepos.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+        if (!string.IsNullOrEmpty(cronSchedule))
         {
-            campaign.Filter ??= new CampaignFilter();
-            campaign.Filter.AssignTo = assignTo;
+            campaign.Schedule = new CampaignSchedule
+            {
+                CronExpression = cronSchedule,
+                Enabled = true,
+                NextRun = Functions.CampaignSchedulerFunction.ComputeNextRun(cronSchedule)
+            };
         }
 
         var created = await _campaignService.CreateAsync(campaign);
-        return JsonSerializer.Serialize(new { id = created.Id, name = created.Name, status = created.Status, sourceType = created.SourceType, template = templateId });
+        return JsonSerializer.Serialize(new { id = created.Id, name = created.Name, status = created.Status, sourceType = created.SourceType, template = templateId, actionMode = created.ActionMode });
     }
 
     [KernelFunction("preview_campaign")]

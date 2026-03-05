@@ -14,6 +14,7 @@ namespace MX.IDP.Agents.Services;
 public interface IGitHubQueryService
 {
     Task<List<GitHubRepoInfo>> GetRepositoriesAsync(string? visibility = null, List<string>? repos = null);
+    Task<List<string>> GetRepoNamesByTopicsAsync(List<string> topics);
     Task<List<DependabotAlertInfo>> GetDependabotAlertsAsync(List<string>? repos = null, string? severity = null);
     Task<List<CodeScanningAlertInfo>> GetCodeScanningAlertsAsync(List<string>? repos = null, string? severity = null);
     Task<List<BranchProtectionInfo>> GetBranchProtectionStatusAsync(List<string>? repos = null);
@@ -42,6 +43,7 @@ public class GitHubRepoInfo
     public bool Archived { get; set; }
     public bool HasIssues { get; set; }
     public bool DeleteBranchOnMerge { get; set; }
+    public List<string> Topics { get; set; } = new();
 }
 
 public class DependabotAlertInfo
@@ -54,6 +56,7 @@ public class DependabotAlertInfo
     public string Summary { get; set; } = "";
     public string? CveId { get; set; }
     public string? FixVersion { get; set; }
+    public DateTimeOffset? CreatedAt { get; set; }
 }
 
 public class CodeScanningAlertInfo
@@ -66,6 +69,7 @@ public class CodeScanningAlertInfo
     public string Location { get; set; } = "";
     public string ToolName { get; set; } = "";
     public string? Category { get; set; }
+    public DateTimeOffset? CreatedAt { get; set; }
 }
 
 public class BranchProtectionInfo
@@ -208,6 +212,30 @@ public class GitHubQueryService : IGitHubQueryService
         }).OrderBy(r => r.Name).ToList();
     }
 
+    public async Task<List<string>> GetRepoNamesByTopicsAsync(List<string> topics)
+    {
+        var client = await _clientFactory.CreateClientAsync();
+        var installationRepos = await client.GitHubApps.Installation.GetAllRepositoriesForCurrent();
+        var matchingRepos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var repo in installationRepos.Repositories.Where(r => !r.Archived))
+        {
+            try
+            {
+                var repoTopics = await client.Repository.GetAllTopics(repo.Owner.Login, repo.Name);
+                if (repoTopics.Names.Any(t => topics.Contains(t, StringComparer.OrdinalIgnoreCase)))
+                    matchingRepos.Add(repo.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get topics for {Repo}", repo.Name);
+            }
+        }
+
+        _logger.LogInformation("Resolved {Count} repos matching topics [{Topics}]", matchingRepos.Count, string.Join(", ", topics));
+        return matchingRepos.ToList();
+    }
+
     public async Task<List<DependabotAlertInfo>> GetDependabotAlertsAsync(List<string>? repos = null, string? severity = null)
     {
         var client = await _clientFactory.CreateClientAsync();
@@ -239,7 +267,8 @@ public class GitHubQueryService : IGitHubQueryService
                         Severity = sev,
                         Summary = alert.SecurityAdvisory?.Summary ?? $"Vulnerable {alert.SecurityVulnerability?.Package?.Name}",
                         CveId = alert.SecurityAdvisory?.CveId,
-                        FixVersion = alert.SecurityVulnerability?.FirstPatchedVersion?.Identifier
+                        FixVersion = alert.SecurityVulnerability?.FirstPatchedVersion?.Identifier,
+                        CreatedAt = DateTimeOffset.TryParse(alert.CreatedAt, out var depCreated) ? depCreated : null
                     });
                 }
             }
@@ -283,7 +312,8 @@ public class GitHubQueryService : IGitHubQueryService
                         Severity = sev,
                         Location = loc is not null ? $"{loc.Path}:{loc.StartLine}" : "unknown",
                         ToolName = alert.Tool?.Name ?? "CodeQL",
-                        Category = alert.Rule?.Tags?.FirstOrDefault()
+                        Category = alert.Rule?.Tags?.FirstOrDefault(),
+                        CreatedAt = DateTimeOffset.TryParse(alert.CreatedAt, out var cqlCreated) ? cqlCreated : null
                     });
                 }
             }
@@ -601,6 +631,7 @@ public class GitHubQueryService : IGitHubQueryService
     private class DependabotAlertDto
     {
         [JsonPropertyName("number")] public int Number { get; set; }
+        [JsonPropertyName("created_at")] public string? CreatedAt { get; set; }
         [JsonPropertyName("security_advisory")] public SecurityAdvisoryDto? SecurityAdvisory { get; set; }
         [JsonPropertyName("security_vulnerability")] public SecurityVulnerabilityDto? SecurityVulnerability { get; set; }
     }
@@ -633,6 +664,7 @@ public class GitHubQueryService : IGitHubQueryService
     private class CodeScanningAlertDto
     {
         [JsonPropertyName("number")] public int Number { get; set; }
+        [JsonPropertyName("created_at")] public string? CreatedAt { get; set; }
         [JsonPropertyName("rule")] public RuleDto? Rule { get; set; }
         [JsonPropertyName("tool")] public ToolDto? Tool { get; set; }
         [JsonPropertyName("most_recent_instance")] public AlertInstanceDto? MostRecentInstance { get; set; }

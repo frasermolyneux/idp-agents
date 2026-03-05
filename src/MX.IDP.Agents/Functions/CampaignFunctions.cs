@@ -37,6 +37,12 @@ public class CampaignFunctions
         // Use system user ID for now — in production, extract from auth token
         if (string.IsNullOrEmpty(campaign.UserId)) campaign.UserId = "system";
 
+        // Compute initial nextRun if schedule is configured
+        if (campaign.Schedule is not null && campaign.Schedule.Enabled && !string.IsNullOrEmpty(campaign.Schedule.CronExpression))
+        {
+            campaign.Schedule.NextRun = CampaignSchedulerFunction.ComputeNextRun(campaign.Schedule.CronExpression);
+        }
+
         var created = await _campaignService.CreateAsync(campaign);
         _logger.LogInformation("Created campaign {CampaignId}: {Name}", created.Id, created.Name);
         return new OkObjectResult(created);
@@ -163,8 +169,27 @@ public class CampaignFunctions
         if (finding.Status != "pending_approval")
             return new ConflictObjectResult($"Finding is not pending approval (status: {finding.Status})");
 
-        // Create the GitHub issue now
-        finding.Status = "issue_created";
+        var campaign = await _campaignService.GetAsync(campaignId);
+        if (campaign is null) return new NotFoundResult();
+
+        // Create the GitHub issue on approval
+        if (finding.Repo is not null && campaign.ActionMode is "issue" or "copilot_agent")
+        {
+            try
+            {
+                await _orchestrationService.CreateIssueForFindingAsync(campaign, finding);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to create issue on approval for finding {FindingId}", findingId);
+                finding.Status = "issue_created"; // Mark as created even if assignment fails
+            }
+        }
+        else
+        {
+            finding.Status = "issue_created";
+        }
+
         await _campaignService.UpsertFindingAsync(finding);
         _logger.LogInformation("Approved finding {FindingId} in campaign {CampaignId}", findingId, campaignId);
         return new OkObjectResult(finding);
@@ -189,11 +214,29 @@ public class CampaignFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "campaigns/{campaignId}/findings/approve-all")] HttpRequest req,
         string campaignId)
     {
+        var campaign = await _campaignService.GetAsync(campaignId);
+        if (campaign is null) return new NotFoundResult();
+
         var findings = await _campaignService.GetFindingsAsync(campaignId, "pending_approval");
         var approved = 0;
         foreach (var finding in findings)
         {
-            finding.Status = "issue_created";
+            if (finding.Repo is not null && campaign.ActionMode is "issue" or "copilot_agent")
+            {
+                try
+                {
+                    await _orchestrationService.CreateIssueForFindingAsync(campaign, finding);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to create issue on bulk approval for finding {FindingId}", finding.Id);
+                    finding.Status = "issue_created";
+                }
+            }
+            else
+            {
+                finding.Status = "issue_created";
+            }
             await _campaignService.UpsertFindingAsync(finding);
             approved++;
         }

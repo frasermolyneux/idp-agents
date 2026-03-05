@@ -24,6 +24,10 @@ public class RepoConfigCampaignSource : ICampaignDataSource
 
         foreach (var cfg in configs)
         {
+            // Exclude repos filtering
+            if (filter?.ExcludeRepos is not null && filter.ExcludeRepos.Contains(cfg.Repo, StringComparer.OrdinalIgnoreCase))
+                continue;
+
             if (!cfg.HasDescription)
             {
                 findings.Add(new CampaignFinding
