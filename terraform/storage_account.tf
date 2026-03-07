@@ -14,4 +14,6 @@ resource "azurerm_storage_account" "function_app_storage" {
 
   local_user_enabled        = false
   shared_access_key_enabled = false
+
+  tags = var.tags
 }

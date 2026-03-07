@@ -56,25 +56,27 @@ resource "azurerm_linux_function_app" "function_app" {
   }
 
   app_settings = {
-    "AZURE_CLIENT_ID"             = local.agents_identity_client_id
-    "AzureAd__Instance"           = "https://login.microsoftonline.com/"
-    "AzureAd__TenantId"           = data.azurerm_client_config.current.tenant_id
-    "AzureAd__ClientId"           = local.idp_agents_app_client_id
-    "AzureAd__Audience"           = format("api://%s/idp-agents-%s", data.azurerm_client_config.current.tenant_id, var.environment)
+    "AZURE_CLIENT_ID"                   = local.agents_identity_client_id
+    "AzureAd__Instance"                 = "https://login.microsoftonline.com/"
+    "AzureAd__TenantId"                 = data.azurerm_client_config.current.tenant_id
+    "AzureAd__ClientId"                 = local.idp_agents_app_client_id
+    "AzureAd__Audience"                 = format("api://%s/idp-agents-%s", data.azurerm_client_config.current.tenant_id, var.environment)
     "AzureOpenAI__Endpoint"             = local.openai_endpoint
     "AzureOpenAI__ChatDeployment"       = "gpt-4.1-mini"
     "AzureOpenAI__EmbeddingDeployment"  = "text-embedding-ada-002"
     "AzureSearch__Endpoint"             = local.ai_search_endpoint
     "KnowledgeStorage__blobServiceUri"  = local.knowledge_storage_endpoint
     "KnowledgeStorage__queueServiceUri" = local.knowledge_storage_queue_endpoint
-    "KeyVault__Uri"               = local.key_vault_uri
-    "CosmosDb__Endpoint"          = local.cosmosdb_endpoint
-    "GitHubApp__AppId"            = local.github_app_id
-    "GitHubApp__InstallationId"   = local.github_app_installation_id
-    "GitHubApp__PemSecretName"    = local.github_app_pem_secret_name
+    "KeyVault__Uri"                     = local.key_vault_uri
+    "CosmosDb__Endpoint"                = local.cosmosdb_endpoint
+    "GitHubApp__AppId"                  = local.github_app_id
+    "GitHubApp__InstallationId"         = local.github_app_installation_id
+    "GitHubApp__PemSecretName"          = local.github_app_pem_secret_name
   }
 
   lifecycle {
     ignore_changes = [app_settings["WEBSITE_RUN_FROM_PACKAGE"]]
   }
+
+  tags = var.tags
 }

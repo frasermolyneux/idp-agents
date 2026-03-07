@@ -13,11 +13,6 @@ variable "location" {
   default = "swedencentral"
 }
 
-variable "instance" {
-  type    = string
-  default = "01"
-}
-
 variable "subscription_id" {
   type = string
 }
@@ -28,6 +23,8 @@ variable "idp_core_state" {
     storage_account_name = string
     container_name       = string
     key                  = string
+    subscription_id      = string
+    tenant_id            = string
   })
 }
 
@@ -37,6 +34,8 @@ variable "platform_hosting_state" {
     storage_account_name = string
     container_name       = string
     key                  = string
+    subscription_id      = string
+    tenant_id            = string
   })
 }
 
@@ -49,4 +48,8 @@ variable "platform_workloads_state" {
     subscription_id      = string
     tenant_id            = string
   })
+}
+
+variable "tags" {
+  default = {}
 }
