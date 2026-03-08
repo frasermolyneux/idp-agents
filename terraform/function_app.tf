@@ -49,10 +49,7 @@ resource "azurerm_linux_function_app" "function_app" {
       ]
     }
 
-    login {
-      # Allow unauthenticated access to OAuth metadata endpoint for MCP client discovery
-      excluded_paths = ["/.well-known/oauth-protected-resource"]
-    }
+    login {}
   }
 
   app_settings = {
@@ -79,4 +76,19 @@ resource "azurerm_linux_function_app" "function_app" {
   }
 
   tags = var.tags
+}
+
+# The azurerm provider does not support excluded_paths in auth_settings_v2,
+# so we patch it via the Azure REST API using azapi.
+resource "azapi_update_resource" "function_app_auth_excluded_paths" {
+  type        = "Microsoft.Web/sites/config@2024-04-01"
+  resource_id = "${azurerm_linux_function_app.function_app.id}/config/authsettingsV2"
+
+  body = {
+    properties = {
+      globalValidation = {
+        excludedPaths = ["/.well-known/oauth-protected-resource"]
+      }
+    }
+  }
 }
